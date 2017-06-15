@@ -24,6 +24,9 @@
   <ItemGroup>
     <ClInclude Include="Easy2D.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="ToDo.txt" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D4BF0E04-064C-486A-9244-19AA6698A481}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>

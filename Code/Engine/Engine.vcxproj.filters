@@ -24,4 +24,9 @@
       <Filter>Заголовочные файлы</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="ToDo.txt">
+      <Filter>Файлы ресурсов</Filter>
+    </Text>
+  </ItemGroup>
 </Project>

@@ -1,7 +1,10 @@
 #pragma once
 
+#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_NONSTDC_NO_WARNINGS
 
 #include <stdint.h>
+#include <stdarg.h>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -32,6 +35,8 @@ namespace Easy2D
 	typedef std::string String;
 	template <class T> using Array = std::vector<T>;
 	template <class T, class U> using HashMap = std::unordered_map<T, U>;
+	template <class T, class U> using Pair = std::pair<T, U>;
+	template <class T> using InitializerList = std::initializer_list<T>;
 
 	//----------------------------------------------------------------------------//
 	// StringUtils
@@ -48,8 +53,83 @@ namespace Easy2D
 
 		//!\return BSD checksum
 		static constexpr uint ConstHash(const char* _str, uint _hash = 0) { return *_str ? ConstHash(_str + 1, ((_hash >> 1) + ((_hash & 1) << 15) + Lower(*_str)) & 0xffff) : _hash; }
+		//!
+		static uint Hash(const char* _str, uint _hash = 0);
 
-		static uint Hash(const char* _str, uint _hash);
+		//!
+		static String Format(const char* _fmt, ...);
+		//!
+		static String FormatV(const char* _fmt, va_list _args);
+	};
+
+	//----------------------------------------------------------------------------//
+	// Tokenizer
+	//----------------------------------------------------------------------------//
+
+	//!
+	struct Tokenizer
+	{
+		//!
+		struct Number
+		{
+			bool isFloat = false;
+			union
+			{
+				int iValue = 0;
+				float fValue;
+			};
+		};
+
+		const char* s = nullptr;
+		const char* e = nullptr;
+
+		//!
+		operator char(void) const { return *s; }
+		//!
+		char operator * (void) const { return *s; }
+		//!
+		char operator [] (int _index) const { return s[_index]; }
+		//!
+		const char* operator ++ (void) { Advance(); return s; }
+		//!
+		const char* operator ++ (int) { const char* p = s; Advance(); return p; }
+
+		//!
+		Tokenizer operator += (int _rhs) { Advance(_rhs); return *this; }
+
+		//!
+		void Advance(int _num = 1);
+		//!
+		int SkipWhiteSpace(void);
+		//!
+		int SkipComments(void);
+		//!
+		void NextToken(void);
+
+		//!
+		bool IsNumber(void) const;
+		//!
+		bool ParseNumber(Number& _val);
+
+		//!
+		bool IsString(void) const;
+		//!
+		bool ParseString(String& _val);
+
+		//!
+		bool EoF(void) const { return !*s; }
+
+		//!
+		bool Cmp(const char* _rhs, int _num) const { return strncmp(s, _rhs, _num) == 0; }
+		//!
+		bool Cmpi(const char* _rhs, int _num) const { return strnicmp(s, _rhs, _num) == 0; }
+		//!
+		bool AnyOf(const char* _cset) const { return *s && strchr(_cset, *s); }
+
+		//!
+		bool RaiseError(const char* _error);
+		//!
+		static void GetErrorPos(const char* _start, const char* _pos, int& _line, int& _column);
 	};
 
 	//----------------------------------------------------------------------------//
@@ -276,11 +356,6 @@ namespace Easy2D
 	};
 
 	//----------------------------------------------------------------------------//
-	// TypeInfo
-	//----------------------------------------------------------------------------//
-
-
-	//----------------------------------------------------------------------------//
 	// Object
 	//----------------------------------------------------------------------------//
 
@@ -337,9 +412,9 @@ namespace Easy2D
 		//!
 		static TypeInfo* GetTypeInfo(uint _type);
 		//!
-		template <class T> TypeInfo* GetOrCreateTypeInfo(void) { return GetOrCreateTypeInfo(T::TypeName); }
-	    //!
-		template <class T> SharedPtr<T> Create(void)
+		template <class T> static TypeInfo* GetOrCreateTypeInfo(void) { return GetOrCreateTypeInfo(T::TypeName); }
+		//!
+		template <class T> static SharedPtr<T> Create(void)
 		{
 			auto _iter = s_types.find(T::TypeID);
 			if (_iter != s_types.end())
@@ -349,7 +424,7 @@ namespace Easy2D
 			return nullptr;
 		}
 		//!
-		template <class T> TypeInfo* Register(uint _flags = 0)
+		template <class T> static TypeInfo* Register(uint _flags = 0)
 		{
 			TypeInfo* _info = GetOrCreateTypeInfo<T>();
 			_info->Factory = T::Factory;
@@ -394,6 +469,170 @@ namespace Easy2D
 
 	template <class T> T* Singleton<T>::s_instance = nullptr;
 	template <class T> T* const& Singleton<T>::Instance = Singleton<T>::s_instance;
+
+	//----------------------------------------------------------------------------//
+	// Json
+	//----------------------------------------------------------------------------//
+
+	//!
+	class Json
+	{
+	public:
+		//!
+		enum class Type
+		{
+			Null,
+			Bool,
+			Int,
+			Float,
+			String,
+			Array,
+			Object,
+		};
+
+
+		typedef Pair<String, Json> KeyValue;
+		typedef Array<KeyValue> Node;
+		typedef Node::iterator Iterator;
+		typedef Node::const_iterator ConstIterator;
+
+		//!
+		Json(void) = default;
+		//!
+		~Json(void) { SetType(Type::Null); }
+		//!
+		Json(const Json& _other);
+		//!
+		Json(Json&& _temp);
+		//!
+		Json(InitializerList<KeyValue> _pairs);
+		//!
+		Json(InitializerList<Json> _values);
+		//!
+		Json(Type _type) { SetType(_type); }
+		//!
+		Json(std::nullptr_t) { }
+		//!
+		Json(bool _value);
+		//!
+		Json(int _value);
+		//!
+		Json(uint _value);
+		//!
+		Json(float _value);
+		//!
+		Json(const char* _value);
+		//!
+		Json(const String& _value);
+		//!
+		Json(String&& _value);
+
+		//!
+		Json& operator = (const Json& _rhs);
+		//!
+		Json& operator = (Json&& _rhs);
+
+		//!
+		bool IsNull(void) { return m_type == Type::Null; }
+		//!
+		bool IsBool(void) { return m_type == Type::Bool; }
+		//!
+		bool IsInt(void) { return m_type == Type::Int; }
+		//!
+		bool IsFloat(void) { return m_type == Type::Int; }
+		//!
+		bool IsNumeric(void) { return m_type == Type::Int || m_type == Type::Float; }
+		//!
+		bool IsString(void) { return m_type == Type::String; }
+		//!
+		bool IsArray(void) { return m_type == Type::Array; }
+		//!
+		bool IsObject(void) { return m_type == Type::Object; }
+		//!
+		bool IsNode(void) { return m_type == Type::Array || m_type == Type::Object; }
+
+		//!
+		Json& SetType(Type _type);
+		//!
+		Json& SetNull(void) { return SetType(Type::Null); }
+		//!
+		Json& SetBool(bool _value) { SetType(Type::Bool).m_bool = _value; return *this; }
+		//!
+		Json& SetInt(int _value) { SetType(Type::Int).m_int = _value; return *this; }
+		//!
+		Json& SetFloat(float _value) { SetType(Type::Float).m_flt = _value; return *this; }
+		//!
+		Json& SetString(const String& _value) { SetType(Type::String)._String() = _value; return *this; }
+		//!
+		Json& SetString(String&& _value) { SetType(Type::String)._String() = std::move(_value); return *this; }
+
+		//!
+		bool AsBool(void) const;
+		//!
+		int AsInt(void) const;
+		//!
+		float AsFloat(void) const;
+		//!
+		String AsString(void) const;
+
+		// [ARRAY OR OBJECT]
+
+		uint Size(void) const;
+
+		// [ARRAY ONLY]
+
+		//! Add new item to end of array. \return this
+		Json& Push(const Json& _value);
+		//! Add new item to end of array. \return this
+		Json& Push(Json&& _value);
+		//! Add new item to end of array and return it. \return new item
+		Json& Append(void);
+
+		// [OBJECT ONLY]
+
+		Json& GetOrAdd(const String& _key);
+
+
+		bool Parse(const char* _str, String* _error = nullptr, IntVector2* _errorPos = nullptr);
+		String Print(void);
+
+		static const Json Null;
+
+	protected:
+
+		bool _Parse(Tokenizer& _str);
+
+		//!
+		bool& _Bool(void) { return m_bool; }
+		//!
+		const bool& _Bool(void) const { return m_bool; }
+		//!
+		int& _Int(void) { return m_int; }
+		//!
+		const int& _Int(void) const { return m_int; }
+		//!
+		float& _Float(void) { return m_flt; }
+		//!
+		const float& _Float(void) const { return m_flt; }
+		//!
+		String& _String(void) { return *reinterpret_cast<String*>(m_str); }
+		//!
+		const String& _String(void) const { return *reinterpret_cast<const String*>(m_str); }
+		//!
+		Node& _Node(void) { return *reinterpret_cast<Node*>(m_node); }
+		//!
+		const Node& _Node(void) const { return *reinterpret_cast<const Node*>(m_node); }
+
+		Type m_type = Type::Null;
+		union
+		{
+			bool m_bool;
+			int m_int = 0;
+			float m_flt;
+			uint8 m_str[sizeof(String)];
+			uint8 m_node[sizeof(Node)];
+		};
+	};
 
 	//----------------------------------------------------------------------------//
 	// Graphics Defs
