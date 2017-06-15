@@ -182,7 +182,55 @@ namespace Easy2D
 			{
 				switch (s[1])
 				{
-					//TODO:
+				case '\\':
+					Advance(2);
+					_val += "\\";
+					break;
+				case '/':
+					Advance(2);
+					_val += "/";
+					break;
+				case 'b':
+					Advance(2);
+					_val += "\b";
+					break;
+				case 'f':
+					Advance(2);
+					_val += "\f";
+					break;
+				case 'n':
+					Advance(2);
+					_val += "\n";
+					break;
+				case 'r':
+					Advance(2);
+					_val += "\r";
+					break;
+				case 't':
+					Advance(2);
+					_val += "\t";
+					break;
+				case 'u':
+				{
+					Advance(2);
+					char _buff[5];
+					for (uint i = 0; i < 4; ++i)
+					{
+						if (!AnyOf("0123456789abcdefABCDEF"))
+							return RaiseError("Expected numeric literal");
+						_buff[i] = *s;
+						Advance();
+					}
+					_buff[4] = 0;
+					uint16 _char = 0;
+					sscanf(_buff, "%hx", &_char);
+
+					if (_char > 0xff)
+						return RaiseError("Unicode character not supported"); // TODO:
+
+					_val += (char)_char;
+
+				} break;
 
 				default:
 					return RaiseError("Unknown escape sequence");
@@ -313,6 +361,8 @@ namespace Easy2D
 	//----------------------------------------------------------------------------//
 	
 	const Json Json::Null;
+	const Json Json::EmptyArray(Json::Type::Array);
+	const Json Json::EmptyObject(Json::Type::Object);
 
 	//----------------------------------------------------------------------------//
 	Json::Json(const Json& _other)
@@ -335,15 +385,6 @@ namespace Easy2D
 			_Node() = std::move(_temp._Node());
 		else
 			m_int = _temp.m_int;
-	}
-	//----------------------------------------------------------------------------//
-	Json::Json(InitializerList<KeyValue> _pairs)
-	{
-
-	}
-	//----------------------------------------------------------------------------//
-	Json::Json(InitializerList<Json> _values)
-	{
 	}
 	//----------------------------------------------------------------------------//
 	Json::Json(bool _value)
@@ -452,6 +493,22 @@ namespace Easy2D
 		return *this;
 	}
 	//----------------------------------------------------------------------------//
+	Json& Json::SetArray(InitializerList<Json> _value)
+	{
+		Clear();
+		for (auto i : _value)
+			Push(i);
+		return *this;
+	}
+	//----------------------------------------------------------------------------//
+	Json& Json::SetObject(InitializerList<KeyValue> _value)
+	{
+		Clear();
+		for (auto i : _value)
+			Set(i.first, i.second);
+		return *this;
+	}
+	//----------------------------------------------------------------------------//
 	bool Json::AsBool(void) const
 	{
 		switch (m_type)
@@ -523,6 +580,45 @@ namespace Easy2D
 		return 0;
 	}
 	//----------------------------------------------------------------------------//
+	Json& Json::Clear(void)
+	{
+		if (IsNode())
+			_Node().clear();
+		return *this;
+	}
+	//----------------------------------------------------------------------------//
+	Json& Json::Resize(uint _size)
+	{
+		SetType(Type::Array);
+		_Node().resize(_size);
+		return *this;
+	}
+	//----------------------------------------------------------------------------//
+	Json& Json::Get(uint _index)
+	{
+		SetType(Type::Array);
+		return _Node()[_index].second;
+	}
+	//----------------------------------------------------------------------------//
+	const Json& Json::Get(uint _index) const
+	{
+		return IsArray() ? _Node()[_index].second : Null;
+	}
+	//----------------------------------------------------------------------------//
+	Json& Json::Insert(uint _pos, const Json& _value)
+	{
+		SetType(Type::Array);
+		_Node().insert(_Node().begin() + _pos, { "", _value });
+		return *this;
+	}
+	//----------------------------------------------------------------------------//
+	Json& Json::Insert(uint _pos, Json&& _value)
+	{
+		SetType(Type::Array);
+		_Node().insert(_Node().begin() + _pos, { "", std::move(_value) });
+		return *this;
+	}
+	//----------------------------------------------------------------------------//
 	Json& Json::Push(const Json& _value)
 	{
 		SetType(Type::Array);
@@ -544,36 +640,110 @@ namespace Easy2D
 		return _Node().back().second;
 	}
 	//----------------------------------------------------------------------------//
+	Json& Json::Pop(void)
+	{
+		if (IsArray())
+			_Node().pop_back();
+		return *this;
+	}
+	//----------------------------------------------------------------------------//
+	Json& Json::Erase(uint _start, uint _num)
+	{
+		if (IsArray())
+			_Node().erase(_Node().begin() + _start, _Node().begin() + _start + _num);
+		return *this;
+	}
+	//----------------------------------------------------------------------------//
 	Json& Json::GetOrAdd(const String& _key)
 	{
 		SetType(Type::Object);
-		for (auto& i : _Node())
-		{
-			if (i.first == _key)
-				return i.second;
-		}
+
+		Json* _value = Find(_key);
+		if (_value)
+			return *_value;
 
 		_Node().push_back({ _key, Null });
 		return _Node().back().second;
 	}
 	//----------------------------------------------------------------------------//
-	bool Json::Parse(const char* _str, String* _error, IntVector2* _errorPos)
+	const Json& Json::Get(const String& _key) const
+	{
+		const Json* _value = Find(_key);
+		return _value ? *_value : Null;
+	}
+	//----------------------------------------------------------------------------//
+	Json* Json::Find(const String& _key)
+	{
+		if (IsObject())
+		{
+			for (auto& i : _Node())
+			{
+				if (i.first == _key)
+					return &i.second;
+			}
+		}
+		return nullptr;
+	}
+	//----------------------------------------------------------------------------//
+	const Json* Json::Find(const String& _key) const
+	{
+		if (IsObject())
+		{
+			for (auto& i : _Node())
+			{
+				if (i.first == _key)
+					return &i.second;
+			}
+		}
+		return nullptr;
+	}
+	//----------------------------------------------------------------------------//
+	Json& Json::Set(const String& _key, const Json& _value)
+	{
+		GetOrAdd(_key) = _value;
+		return *this;
+	}
+	//----------------------------------------------------------------------------//
+	bool Json::Erase(const String& _key)
+	{
+		if (IsObject())
+		{
+			for (auto i = _Node().begin(); i != _Node().end(); ++i)
+			{
+				if (i->first == _key)
+				{
+					_Node().erase(i);
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	//----------------------------------------------------------------------------//
+	Json::Node& Json::Container(void)
+	{
+		SetType(Type::Object);
+		return _Node();
+	}
+	//----------------------------------------------------------------------------//
+	const Json::Node& Json::Container(void) const
+	{
+		return IsObject() ? _Node() : EmptyObject._Node();
+	}
+	//----------------------------------------------------------------------------//
+	bool Json::Parse(const char* _str, String* _error)
 	{
 		Tokenizer _stream;
 		_stream.s = _str;
 
 		if (!_Parse(_stream))
 		{
-			int _l, _c;
-			Tokenizer::GetErrorPos(_str, _stream.s, _l, _c);
-
 			if (_error)
-				*_error = StringUtils::Format("(%d:%d) : JSON error : %s", _l, _c, _stream.e);
-
-			if (_errorPos)
 			{
-				//TODO
-			}						  
+				int _l, _c;
+				Tokenizer::GetErrorPos(_str, _stream.s, _l, _c);
+				*_error = StringUtils::Format("(%d:%d) : JSON error : %s", _l, _c, _stream.e);
+			}
 
 			return false;
 		}
@@ -581,9 +751,11 @@ namespace Easy2D
 		return true;
 	}
 	//----------------------------------------------------------------------------//
-	String Json::Print(void)
+	String Json::Print(void) const
 	{
-		return "";
+		String _str;
+		_Print(_str, 0);
+		return _str;
 	}
 	//----------------------------------------------------------------------------//
 	bool Json::_Parse(Tokenizer& _str)
@@ -698,6 +870,118 @@ namespace Easy2D
 		}
 
 		return true;
+	}
+	//----------------------------------------------------------------------------//
+	void Json::_Print(String& _dst, int _depth) const
+	{
+
+		switch (m_type)
+		{
+		case Type::Null:
+			_dst += "null";
+			break;
+		case Type::Bool:
+			_dst += _Bool() ? "true" : "false";
+			break;
+		case Type::Int:
+			_dst += StringUtils::Format("%d", _Int());
+			break;
+		case Type::Float:
+			_dst += StringUtils::Format("%f", _Float());
+			break;
+		case Type::String:
+		{
+			_PrintString(_dst, _String(), _depth);
+
+		} break;
+		case Type::Array:
+		{
+			bool _oneLine = true;
+			if (_Node().size() < 5)
+			{
+				for (const auto& i : _Node())
+				{
+					if (i.second.IsNode())
+					{
+						_oneLine = false;
+						break;
+					}
+				}
+			}
+			else
+				_oneLine = false;
+
+			_dst += "[";
+
+			for (const auto& i : _Node())
+			{
+				if (!_oneLine)
+				{
+					_dst += '\n';
+					for (int i = 0; i <= _depth; ++i)
+						_dst += "\t";
+				}
+				i.second._Print(_dst, _depth + 1);
+
+				if (&i != &_Node().back())
+				{
+					_dst += ",";
+					if (_oneLine)
+						_dst += " ";
+				}
+			}
+
+			if (!_oneLine)
+			{
+				_dst += "\n";
+				for (int i = 0; i < _depth; ++i)
+					_dst += "\t";
+			}
+			_dst += "]";
+
+		} break;
+		case Type::Object:
+		{
+			_dst += "{\n";
+
+			for (const auto& i : _Node())
+			{
+				for (int i = 0; i <= _depth; ++i)
+					_dst += "\t";
+
+				_PrintString(_dst, i.first, _depth + 1);
+
+				_dst += " : ";
+				i.second._Print(_dst, _depth + 1);
+
+				if (&i != &_Node().back())
+					_dst += ",\n";
+			}
+
+			_dst += "\n";
+			for (int i = 0; i < _depth; ++i)
+				_dst += "\t";
+			_dst += "}";
+
+		} break;
+		}
+	}
+	//----------------------------------------------------------------------------//
+	void Json::_PrintString(String& _dst, const String& _src, int _depth)
+	{
+		_dst += "\"";
+		for (char s : _src)
+		{
+			if (s == '\n')
+				_dst += "\\n";
+			else if (s == '\r')
+				_dst += "\\r";
+			else if (s == '\\')
+				_dst += "\\\\";
+			else
+				_dst += s; // TODO:
+		}
+		_dst += "\"";
 	}
 	//----------------------------------------------------------------------------//
 
