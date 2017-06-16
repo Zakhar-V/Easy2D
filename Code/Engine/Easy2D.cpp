@@ -1079,6 +1079,8 @@ namespace Easy2D
 
 		m_opened = true;
 		m_active = true;
+
+		m_batch = new Vertex[m_batchMaxSize];
 	}
 	//----------------------------------------------------------------------------//
 	Engine::~Engine(void)
@@ -1115,11 +1117,23 @@ namespace Easy2D
 
 
 		glViewport(0, 0, m_size.x, m_size.y);
+
+		glEnableClientState(GL_COLOR_ARRAY);
+		glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(Vertex), reinterpret_cast<uint8*>(m_batch) + offsetof(Vertex, color));
+
+		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		glTexCoordPointer(2, GL_FLOAT, sizeof(Vertex), reinterpret_cast<uint8*>(m_batch) + offsetof(Vertex, tc));
+
+		glEnableClientState(GL_VERTEX_ARRAY);
+		glVertexPointer(3, GL_FLOAT, sizeof(Vertex), reinterpret_cast<uint8*>(m_batch) + offsetof(Vertex, pos));
 	}
 	//----------------------------------------------------------------------------//
 	void Engine::EndFrame(void)
 	{
+		Flush();
+
 		SwapBuffers((HDC)m_dc);
+
 		if (m_vsync)
 			Sleep(1); // relax
 	}
@@ -1133,7 +1147,9 @@ namespace Easy2D
 	//----------------------------------------------------------------------------//
 	double Engine::CurrentTime(void)
 	{
-		std::chrono::duration<double> _time;		_time = std::chrono::duration_cast<decltype(_time)>(std::chrono::high_resolution_clock::now().time_since_epoch());		return _time.count();
+		std::chrono::duration<double> _time;
+		_time = std::chrono::duration_cast<decltype(_time)>(std::chrono::high_resolution_clock::now().time_since_epoch());
+		return _time.count();
 	}
 	//----------------------------------------------------------------------------//
 	void Engine::TimeScale(float _scale)
@@ -1141,6 +1157,33 @@ namespace Easy2D
 		if (_scale < 0)
 			_scale = 0;
 		m_timeScale = _scale;
+	}
+	//----------------------------------------------------------------------------//
+	void Engine::Begin2D(const Vector2& _cameraPos, float _zoom)
+	{
+		Flush();
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(0, m_size.x, m_size.y, 0, 0, 1);
+
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glTranslatef(-_cameraPos.x, -_cameraPos.y, 0);
+		glScalef(_zoom, _zoom, 1);
+	}
+	//----------------------------------------------------------------------------//
+	void Engine::Flush(void)
+	{
+		static const uint GLPrimitveType[] = 
+		{
+			GL_POINTS, // Points
+			GL_LINES, // Lines
+			GL_TRIANGLES, // Triangles
+			GL_QUADS, // Quads
+		};
+
+		glDrawArrays(GLPrimitveType[m_batchType], 0, m_batchSize);
+		m_batchSize = 0;
 	}
 	//----------------------------------------------------------------------------//
 	void Engine::Clear(FrameBufferType::Enum _buffers, const Vector4& _color, float _depth, int _stencil)
@@ -1202,6 +1245,42 @@ namespace Easy2D
 		{
 			glStencilMask(_stencilMask);
 		}
+	}
+	//----------------------------------------------------------------------------//
+	void Engine::Draw(PrimitiveType::Enum _type, const Vertex* _vertices, uint _count, Texture* _texture, uint _mode)
+	{
+		Vertex* _batch = AddBatch(_type, _count, _texture, _mode);
+		memcpy(_batch, _vertices, _count * sizeof(Vertex));
+	}
+	//----------------------------------------------------------------------------//
+	Vertex* Engine::AddBatch(PrimitiveType::Enum _type, uint _count, Texture* _texture, uint _mode)
+	{
+		if (m_batchType != _type)
+		{
+			Flush();
+			m_batchType = _type;
+		}
+
+		if (m_texture != _texture)
+		{
+			Flush();
+			m_texture = _texture;
+			//TODO: bind texture
+		}
+
+		if (m_batchMode != _mode)
+		{
+			Flush();
+			m_batchMode = _mode;
+			//TODO: apply changes
+		}
+
+		if (m_batchSize + _count >= m_batchMaxSize)
+			Flush();
+
+		Vertex* _batch = m_batch + m_batchSize;
+		m_batchSize += _count;
+		return _batch;
 	}
 	//----------------------------------------------------------------------------//
 	long __stdcall Engine::_WindowCallback(void* _wnd, uint _msg, uint _wParam, long _lParam)

@@ -190,6 +190,73 @@ namespace Easy2D
 		};
 	};
 
+	struct Quaternion
+	{
+		union
+		{
+			struct
+			{
+				float x, y, z, w;
+			};
+			float v[4];
+		};
+	};
+
+	struct Matrix34
+	{
+		union
+		{
+			struct
+			{
+				float m00, m01, m02, m03;
+				float m10, m11, m12, m13;
+				float m20, m21, m22, m23;
+			};
+			float m[3][4];
+			float v[12];
+		};
+	};
+
+	struct Matrix44
+	{
+		//Matrix44& CreateOrtho2D(float _width, float _height);
+
+		//const Matrix44 Zero;
+		//const Matrix44 Identity;
+
+		union
+		{
+			struct
+			{
+				float m00, m01, m02, m03;
+				float m10, m11, m12, m13;
+				float m20, m21, m22, m23;
+				float m30, m31, m32, m33;
+			};
+			float m[4][4];
+			float v[16];
+		};
+	};
+
+	struct Rect
+	{
+		Vector2 lower = { 0, 0 };
+		Vector2 upper = { 0, 0 };
+	};
+
+	struct Color4ub
+	{
+		union
+		{
+			struct
+			{
+				uint8 r, g, b, a;
+			};
+			uint8 v[4];
+			uint8 rgba;
+		};
+	};
+
 	//----------------------------------------------------------------------------//
 	// NonCopyable
 	//----------------------------------------------------------------------------//
@@ -747,7 +814,7 @@ namespace Easy2D
 	struct Vertex
 	{
 		Vector2 tc;
-		Vector4 color;
+		Color4ub color;
 		Vector3 pos;
 	};
 
@@ -796,6 +863,9 @@ namespace Easy2D
 		//!
 		~Engine(void);
 
+		//
+		const IntVector2& WindowSize(void) { return m_size; }
+
 		// [LOOP]
 
 		//!
@@ -829,7 +899,15 @@ namespace Easy2D
 		// [DRAW]
 
 		//!
+		void Begin2D(const Vector2& _cameraPos, float _zoom = 1);
+		//!
+		void Flush(void);
+		//!
 		void Clear(FrameBufferType::Enum _buffers, const Vector4& _color = { 0, 0, 0, 0 }, float _depth = 1, int _stencil = 0xff);
+		//!
+		void Draw(PrimitiveType::Enum _type, const Vertex* _vertices, uint _count, Texture* _texture, uint _mode);
+		//!
+		Vertex* AddBatch(PrimitiveType::Enum _type, uint _count, Texture* _texture, uint _mode);
 
 	protected:
 		//!
@@ -856,6 +934,14 @@ namespace Easy2D
 		float m_timeScale = 1;
 		float m_frameTime = 0;
 		float m_unscaledFrameTime = 0;
+
+		PrimitiveType::Enum m_batchType = PrimitiveType::Points;
+		SharedPtr<Texture> m_texture;
+		uint m_batchMode = 0;
+		//Array<Vertex> m_batch;
+		Vertex* m_batch = nullptr;
+		uint m_batchSize = 0;
+		uint m_batchMaxSize = 0xffff;
 	};
 
 
