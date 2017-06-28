@@ -1,0 +1,14 @@
+EXT_texture_filter_anisotropic
+ARB_debug_output
+AMD_debug_output
+--EXT_texture_compression_latc
+EXT_texture_compression_s3tc
+EXT_texture_compression_rgtc
+ARB_texture_compression_rgtc
+EXT_direct_state_access
+--NV_command_list
+
+
+
+
+
