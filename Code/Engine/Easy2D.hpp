@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <string>
 #include <vector>
+#include <list>
 #include <unordered_map>
 
 #define CHECK(cond, ...)
@@ -18,7 +19,7 @@
 #define ASSERT(...)
 #endif
 
-#define LOG(msg, ...)
+#define LOG(msg, ...) {printf(msg, ##__VA_ARGS__); printf("\n");}
 
 namespace Easy2D
 {
@@ -34,6 +35,7 @@ namespace Easy2D
 
 	typedef std::string String;
 	template <class T> using Array = std::vector<T>;
+	template <class T> using List = std::list<T>;
 	template <class T, class U> using HashMap = std::unordered_map<T, U>;
 	template <class T, class U> using Pair = std::pair<T, U>;
 	template <class T> using InitializerList = std::initializer_list<T>;
@@ -60,6 +62,12 @@ namespace Easy2D
 		static String Format(const char* _fmt, ...);
 		//!
 		static String FormatV(const char* _fmt, va_list _args);
+
+		//!
+		static int Cmpi(const char* _str1, const char* _str2);
+
+		//!
+		static const String EmptyString;
 	};
 
 	//----------------------------------------------------------------------------//
@@ -136,6 +144,18 @@ namespace Easy2D
 	// 
 	//----------------------------------------------------------------------------//
 
+	template <class T> T Min(T _a, T _b)
+	{
+		return _a < _b ? _a : _b;
+	}
+	template <class T> T Max(T _a, T _b)
+	{
+		return _a > _b ? _a : _b;
+	}
+	template <class T> T Clamp(T _value, T _min, T _max)
+	{
+		return Max(_min, Min(_value, _max));
+	}
 
 	struct IntVector2
 	{
@@ -484,7 +504,7 @@ namespace Easy2D
 		template <class T> static SharedPtr<T> Create(void)
 		{
 			auto _iter = s_types.find(T::TypeID);
-			if (_iter != s_types.end())
+			if (_iter != s_types.end() && _iter->second.Factory)
 				return _iter->second.Factory().Cast<T>();
 
 			LOG("Error: Factory for %s not found", T::TypeName); // or better use of FATAL?
@@ -494,7 +514,7 @@ namespace Easy2D
 		template <class T> static TypeInfo* Register(uint _flags = 0)
 		{
 			TypeInfo* _info = GetOrCreateTypeInfo<T>();
-			_info->Factory = T::Factory;
+			_info->Factory = &Object::Factory<T>;
 			_info->AddFlags(_flags);
 			return _info;
 		}
@@ -536,6 +556,129 @@ namespace Easy2D
 
 	template <class T> T* Singleton<T>::s_instance = nullptr;
 	template <class T> T* const& Singleton<T>::Instance = Singleton<T>::s_instance;
+
+	//----------------------------------------------------------------------------//
+	// Stream
+	//----------------------------------------------------------------------------//
+
+	typedef SharedPtr<class Stream> StreamPtr;
+
+	class Stream : public Object
+	{
+	public:
+		RTTI("Stream");
+
+		//!
+		enum class SeekOrigin
+		{
+			Set = SEEK_SET,
+			Current = SEEK_CUR,
+			End = SEEK_END,
+		};
+
+		//!
+		virtual const String& Name(void) = 0;
+
+		//!
+		virtual bool IsOpened(void) = 0;
+		//!
+		virtual void Close(void) = 0;
+
+		//!
+		virtual uint Size(void) = 0;
+		//!
+		virtual bool EoF(void) = 0;
+		//!
+		virtual void Seek(int _offset, SeekOrigin _origin = SeekOrigin::Current) = 0;
+		//!
+		virtual uint Tell(void) = 0;
+
+		//!
+		virtual bool IsReadOnly(void) = 0;
+		//!
+		virtual uint Read(void* _dst, uint _size) = 0;
+		//!
+		virtual uint Write(const void* _src, uint _size) = 0;
+		//!
+		virtual void Flush(void) = 0;
+
+	protected:
+	};
+
+	//----------------------------------------------------------------------------//
+	// FileStream
+	//----------------------------------------------------------------------------//
+
+	typedef SharedPtr<class FileStream> FileStreamPtr;
+
+	class FileStream : public Stream
+	{
+	public:
+		RTTI("DiskFile");
+
+		enum class Mode
+		{
+			ReadOnly, //!< Open a existent file for reading only. Not create file if no exists.
+			ReadWriteExistent, //!< Open a existent file for reading and writing. Not create file if no exists.
+			ReadWrite, //!< Open existent or create new file for reading and writing. 
+			Overwrite, //!< Create new file for reading and writing.
+		};
+
+		//!
+		FileStream(void) = default;
+		//!
+		~FileStream(void);
+
+		//!
+		const String& Name(void) override { return m_name; }
+
+		//!
+		bool Open(const String& _name, Mode _mode);
+		//!
+		bool IsOpened(void) override { return m_handle != nullptr; }
+		//!
+		void Close(void) override;
+
+		//!
+		uint Size(void) override { return m_size; }
+		//!
+		bool EoF(void) override;
+		//!
+		void Seek(int _offset, SeekOrigin _origin = SeekOrigin::Current) override;
+		//!
+		uint Tell(void) override;
+
+		//!
+		bool IsReadOnly(void) override { return m_readOnly; }
+		//!
+		uint Read(void* _dst, uint _size) override;
+		//!
+		uint Write(const void* _src, uint _size) override;
+		//!
+		void Flush(void) override;
+
+	protected:
+		String m_name;
+		bool m_readOnly = true;
+		uint m_size = 0;
+		FILE* m_handle = nullptr;
+	};
+
+	//----------------------------------------------------------------------------//
+	// PathUtils
+	//----------------------------------------------------------------------------//
+
+	struct PathUtils
+	{
+		//!
+		static bool IsFullPath(const char* _path);
+		//!
+		static bool IsDelimeter(char _ch);
+		//!
+		static String Extension(const char* _path);
+		//!
+		static String Extension(const String& _path) { return Extension(_path.c_str()); }
+	};
 
 	//----------------------------------------------------------------------------//
 	// Json
@@ -738,6 +881,11 @@ namespace Easy2D
 		String Print(void) const;
 
 		//!
+		bool Load(Stream* _src);
+		//!
+		void Save(Stream* _dst);
+
+		//!
 		static const Json Null;
 		//!
 		static const Json EmptyArray;
@@ -813,7 +961,7 @@ namespace Easy2D
 
 	struct Vertex
 	{
-		Vector2 tc;
+		Vector3 tc;
 		Color4ub color;
 		Vector3 pos;
 	};
@@ -822,16 +970,98 @@ namespace Easy2D
 	// Resource
 	//----------------------------------------------------------------------------//
 
+	typedef SharedPtr<class Resource> ResourcePtr;
+
+	//!
 	class Resource : public Object
 	{
 	public:
 		RTTI("Resource");
 
-		//virtual bool Load(const String& _name);
+		//!
+		virtual bool Load(Stream* _src);
+		//!
+		virtual bool Save(Stream* _dst);
+
+		//!
+		void SetName(const String& _name) { m_name = _name; }
+		//!
+		const String& GetName(void) { return m_name; }
 
 	protected:
-		String m_name;
-		uint m_id = 0;
+ 		String m_name;
+	};
+
+	//----------------------------------------------------------------------------//
+	// Image
+	//----------------------------------------------------------------------------//
+
+	//!
+	typedef SharedPtr<class Image> ImagePtr;
+
+	//!
+	class Image : public Resource
+	{
+	public:
+		RTTI("Image");
+
+		//!
+		Image(void) = default;
+		//!
+		~Image(void);
+
+		//!
+		bool Realloc(uint _width, uint _height, uint _depth, uint _channels);
+
+		//!
+		uint Width(void) { return m_size.x; }
+		//!
+		uint Height(void) { return m_size.y; }
+		//!
+		uint Depth(void) { return m_depth; }
+		//!
+		uint Channels(void) { return m_channels; }
+		//!
+		uint8* Layer(uint _index);
+
+		//! \sa	Resource::Load
+		//!	jpeg, png, bmp, hdr, psd, tga, gif
+		bool Load(Stream* _src) override;
+		//! \sa	Resource::Save
+		bool Save(Stream* _dst) override;
+
+	protected:
+		IntVector2 m_size;
+		uint m_depth = 1;
+		uint m_channels = 4;
+		uint8* m_pixels = nullptr;
+		int m_compressedFormat = 0; // TODO:
+	};
+
+	//----------------------------------------------------------------------------//
+	// PixelFormat
+	//----------------------------------------------------------------------------//
+
+	struct PixelFormat
+	{
+		enum Enum
+		{
+			R8,
+			RG8,
+			RGB8,
+			RGBA8,
+
+			// compressed formats
+			DXT1,
+			DXT5,
+		};
+
+		//!
+		static bool IsCompressed(Enum _format);
+		//!
+		static Enum GetCompressedFormat(Enum _format);
+		//!
+		static Enum GetUncompressedFormat(Enum _format);
 	};
 
 	//----------------------------------------------------------------------------//
@@ -843,9 +1073,32 @@ namespace Easy2D
 	public:
 		RTTI("Texture");
 
+		enum class Type
+		{
+			Default, //!< 2D
+			Volume,	//!< 3D
+		};
+
+		//!
+		void Create(Type _type, PixelFormat::Enum _format);
+		//!
+		void Destroy(void);
+		//!
+		void Realloc(uint _width, uint _height, uint _depth);
+		//!
+		void Write(int _x, int _y, int _z, uint _w, uint _h, uint _d, PixelFormat::Enum _format, const void* _data);
+
+		//! \sa	Resource::Load, Image::Load
+		bool Load(Stream* _src) override;
+
+		void _Bind(uint _slot);
+
 	protected:
-		IntVector2 m_size;
-		uint m_handle;
+		Type m_type = Type::Default;
+		PixelFormat::Enum m_format = PixelFormat::RGBA8;
+		IntVector2 m_size = { 0, 0 };
+		uint m_depth = 1;
+		uint m_handle = 0;
 	};
 
 	//----------------------------------------------------------------------------//
@@ -896,6 +1149,31 @@ namespace Easy2D
 		//!
 		float TimeScale(void) { return m_timeScale; }
 
+		// [FILE SYSTEM]
+
+		void AddPath(const String& _path);
+
+		bool FileExists(const String& _name, String* _path = nullptr);
+
+		StreamPtr OpenFile(const String& _name, FileStream::Mode _mode = FileStream::Mode::ReadOnly);
+
+		// [RESOURCES]
+
+		//!
+		Resource* GetResource(const char* _type, const String& _name, uint _typeid = 0);
+		//!
+		Resource* GetTempResource(const char* _type, const String& _name, uint _typeid = 0);
+		//!
+		template <class T> T* GetResource(const String& _name)
+		{
+			return static_cast<T*>(GetResource(T::TypeName, _name, T::TypeID));
+		}
+		//!
+		template <class T> T* GetTempResource(const String& _name)
+		{
+			return static_cast<T*>(GetTempResource(T::TypeName, _name, T::TypeID));
+		}
+
 		// [DRAW]
 
 		//!
@@ -942,6 +1220,10 @@ namespace Easy2D
 		Vertex* m_batch = nullptr;
 		uint m_batchSize = 0;
 		uint m_batchMaxSize = 0xffff;
+
+		HashMap<uint, String> m_paths;
+
+		HashMap<uint, HashMap<uint, ResourcePtr>> m_resources;
 	};
 
 

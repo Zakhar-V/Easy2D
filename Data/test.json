@@ -1,11 +1,7 @@
 {
-	"atlas" : "font",
-	"symbols" : {
-		"a" : [0, 0, 10, 10],
-		"b" : [0, 10, 10, 20]
-	},
-	"commands" : {
-		"flipX" : false,
-		"flipY" : false
-	}		
+  "Source": "idle.gif",
+  "FlipX": false,
+  "FlipY": false,
+  "UseCompression": true,
+
 }

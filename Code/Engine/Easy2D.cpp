@@ -3,18 +3,30 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#ifdef _MSC_VER
+#include <direct.h>
+#else
+// TODO
+#endif
 #include <chrono>
 #include <Windows.h>
-#include <GL/GL.h>
+#include <GL/gl_Load.h>
 
 #pragma comment(lib, "opengl32.lib")
+
+#define STBI_NO_STDIO
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h" // https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
+
 
 namespace Easy2D
 {
 	//----------------------------------------------------------------------------//
 	// StringUtils
 	//----------------------------------------------------------------------------//
+	
+	const String StringUtils::EmptyString;
 
 	//----------------------------------------------------------------------------//
 	uint StringUtils::Hash(const char* _str, uint _hash)
@@ -41,6 +53,11 @@ namespace Easy2D
 		char _buffer[4096];
 		vsnprintf(_buffer, sizeof(_buffer), _fmt, _args);
 		return _buffer;
+	}
+	//----------------------------------------------------------------------------//
+	int StringUtils::Cmpi(const char* _str1, const char* _str2)
+	{
+		return stricmp(_str1, _str2);
 	}
 	//----------------------------------------------------------------------------//
 
@@ -353,6 +370,140 @@ namespace Easy2D
 		if (_iter != s_types.end())
 			return &_iter->second;
 		return nullptr;
+	}
+	//----------------------------------------------------------------------------//
+
+	//----------------------------------------------------------------------------//
+	// FileStream
+	//----------------------------------------------------------------------------//
+
+	//----------------------------------------------------------------------------//
+	FileStream::~FileStream(void)
+	{
+		Close();
+	}
+	//----------------------------------------------------------------------------//
+	bool FileStream::Open(const String& _name, Mode _mode)
+	{
+		static const char* _modes[] =
+		{
+			"rb", // ReadOnly
+			"rb+", // ReadWriteExistent
+			"rb+", // ReadWrite
+			"wb+", // Overwrite
+		};
+
+		Close();
+
+		m_readOnly = _mode == Mode::ReadOnly;
+		m_name = _name;
+		m_handle = fopen(_name.c_str(), _modes[(int)_mode]);
+		if (!m_handle && _mode == Mode::ReadWrite)
+			m_handle = fopen(_name.c_str(), "wb+");
+
+		if (!m_handle)
+		{
+			LOG("Error: Unable to %s file \"%s\"", (_mode == Mode::ReadWrite || _mode == Mode::Overwrite) ? "create" : "open", _name.c_str());
+			return false;
+		}
+
+		uint _pos = Tell();
+		Seek(0, SeekOrigin::End);
+		m_size = Tell();
+		Seek(_pos, SeekOrigin::Set);
+
+		return true;
+	}
+	//----------------------------------------------------------------------------//
+	void FileStream::Close(void)
+	{
+		if (m_handle)
+		{
+			fclose(m_handle);
+			m_handle = nullptr;
+		}
+	}
+	//----------------------------------------------------------------------------//
+	bool FileStream::EoF(void)
+	{
+		return m_handle && feof(m_handle);
+	}
+	//----------------------------------------------------------------------------//
+	void FileStream::Seek(int _offset, SeekOrigin _origin)
+	{
+		if (m_handle)
+			fseek(m_handle, _offset, (int)_origin);
+	}
+	//----------------------------------------------------------------------------//
+	uint FileStream::Tell(void)
+	{
+		return m_handle ? (uint)ftell(m_handle) : 0;
+	}
+	//----------------------------------------------------------------------------//
+	uint FileStream::Read(void* _dst, uint _size)
+	{
+		ASSERT(!_size || _dst);
+		return m_handle ? (uint)fread(_dst, 1, _size, m_handle) : 0;
+	}
+	//----------------------------------------------------------------------------//
+	uint FileStream::Write(const void* _src, uint _size)
+	{
+		ASSERT(!_size || _src);
+		return (m_handle && !m_readOnly) ? (uint)fwrite(_src, 1, _size, m_handle) : 0;
+	}
+	//----------------------------------------------------------------------------//
+	void FileStream::Flush(void)
+	{
+		if (m_handle && !m_readOnly)
+			fflush(m_handle);
+	}
+	//----------------------------------------------------------------------------//
+
+	//----------------------------------------------------------------------------//
+	// PathUtils
+	//----------------------------------------------------------------------------//
+
+	//----------------------------------------------------------------------------//
+	bool PathUtils::IsFullPath(const char* _path)
+	{
+		if (_path && _path[0])
+		{
+#ifdef _WIN32
+			const char* _dev = strchr(_path, ':');
+			return _dev && (_dev[1] == '\\' || _dev[1] == '/');
+#else
+			// TODO
+#endif
+		}
+		return false;
+	}
+	//----------------------------------------------------------------------------//
+	bool PathUtils::IsDelimeter(char _ch)
+	{
+#ifdef _WIN32
+		return _ch == '\\' || _ch == '/';
+#else
+		// TODO
+#endif
+	}
+	//----------------------------------------------------------------------------//
+	String PathUtils::Extension(const char* _path)
+	{
+		if (_path)
+		{
+			String _ext;
+			for (const char* i = _path + strlen(_path); --i >= _path; )
+			{
+				if (*i == '.')
+				{
+					while (*i++ != 0)
+						_ext += *i;
+					return _ext;
+				}
+			}
+		}
+
+		return StringUtils::EmptyString;
 	}
 	//----------------------------------------------------------------------------//
 
@@ -758,6 +909,30 @@ namespace Easy2D
 		return _str;
 	}
 	//----------------------------------------------------------------------------//
+	bool Json::Load(Stream* _src)
+	{
+		ASSERT(_src != nullptr);
+		
+		Array<char> _data;
+		_data.resize(_src->Size());
+		_src->Read(_data.data(), (uint)_data.size());
+
+		String _err;
+		if (!Parse(_data.data(), &_err))
+		{
+			LOG("%s%s", _src->Name().c_str(), _err.c_str());
+			return false;
+		}
+		return true;
+	}
+	//----------------------------------------------------------------------------//
+	void Json::Save(Stream* _dst)
+	{
+		ASSERT(_dst != nullptr);
+
+		// TODO
+	}
+	//----------------------------------------------------------------------------//
 	bool Json::_Parse(Tokenizer& _str)
 	{
 		//http://www.json.org/json-ru.html
@@ -986,6 +1161,433 @@ namespace Easy2D
 	//----------------------------------------------------------------------------//
 
 	//----------------------------------------------------------------------------//
+	// Resource
+	//----------------------------------------------------------------------------//
+	
+	//----------------------------------------------------------------------------//
+	bool Resource::Load(Stream* _src)
+	{
+		LOG("Error: Load not supported for %s", TypeName);
+		return false;
+	}
+	//----------------------------------------------------------------------------//
+	bool Resource::Save(Stream* _dst)
+	{
+		LOG("Error: Save not supported for %s", TypeName);
+		return false;
+	}
+	//----------------------------------------------------------------------------//
+
+	//----------------------------------------------------------------------------//
+	// Image
+	//----------------------------------------------------------------------------//
+	
+	/*
+	typedef struct gif_result_t {
+	int delay;
+	unsigned char *data;
+	struct gif_result_t *next;
+} gif_result;
+
+STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *frames)
+{
+	FILE *f;
+	stbi__context s;
+	unsigned char *result = 0;
+
+	if (!(f = stbi__fopen(filename, "rb")))
+		return stbi__errpuc("can't fopen", "Unable to open file");
+
+	stbi__start_file(&s, f);
+
+	if (stbi__gif_test(&s))
+	{
+		int c;
+		stbi__gif g;
+		gif_result head;
+		gif_result *prev = 0, *gr = &head;
+
+		memset(&g, 0, sizeof(g));
+		memset(&head, 0, sizeof(head));
+
+		*frames = 0;
+
+		while (gr->data = stbi__gif_load_next(&s, &g, &c, 4))
+		{
+			if (gr->data == (unsigned char*)&s)
+			{
+				gr->data = 0;
+				break;
+			}
+
+			if (prev) prev->next = gr;
+			gr->delay = g.delay;
+			prev = gr;
+			gr = (gif_result*) stbi__malloc(sizeof(gif_result));
+			memset(gr, 0, sizeof(gif_result));
+			++(*frames);
+		}
+
+		STBI_FREE(g.out);
+
+		if (gr != &head)
+			STBI_FREE(gr);
+
+		if (*frames > 0)
+		{
+			*x = g.w;
+			*y = g.h;
+		}
+
+		result = head.data;
+
+		if (*frames > 1)
+		{
+			unsigned int size = 4 * g.w * g.h;
+			unsigned char *p = 0;
+
+			result = (unsigned char*)stbi__malloc(*frames * (size + 2));
+			gr = &head;
+			p = result;
+
+			while (gr)
+			{
+				prev = gr;
+				memcpy(p, gr->data, size);
+				p += size;
+				*p++ = gr->delay & 0xFF;
+				*p++ = (gr->delay & 0xFF00) >> 8;
+				gr = gr->next;
+
+				STBI_FREE(prev->data);
+				if (prev != &head) STBI_FREE(prev);
+			}
+		}
+	}
+	else
+	{
+		result = stbi__load_main(&s, x, y, frames, 4);
+		*frames = !!result;
+	}
+
+	fclose(f);
+	return result;
+}*/
+	//----------------------------------------------------------------------------//
+	Image::~Image(void)
+	{
+		if (m_pixels)
+			free(m_pixels);
+	}
+	//----------------------------------------------------------------------------//
+	bool Image::Realloc(uint _width, uint _height, uint _depth, uint _channels)
+	{
+		if (_depth == 0)
+			_depth = 1;
+		_channels = Clamp<uint>(_channels, 1, 4);
+
+		if (m_size.x == _width && m_size.y == _height && m_depth == _depth && m_channels == _channels)
+			return true;
+
+		if (m_pixels)
+			delete[] m_pixels;
+
+		m_size.x = _width;
+		m_size.y = _height;
+		m_depth = _depth;
+		m_channels = _channels;
+		m_pixels = (uint8*)malloc(_width * _height * _depth * _channels);
+
+		if(!m_pixels)
+		{
+			LOG("Error: Unable to reallocate image \"%s\" (%d bytes)", m_name.c_str(), _width * _height * _depth * _channels * sizeof(m_pixels[0]));
+			m_size.x = 0;
+			m_size.y = 0;
+			m_pixels = nullptr;
+			return false;
+		}
+
+		return true;
+	}
+	//----------------------------------------------------------------------------//
+	uint8* Image::Layer(uint _index)
+	{
+		ASSERT(_index < m_depth);
+		return m_pixels + m_size.x * m_size.y * m_channels * _index;
+	}
+	//----------------------------------------------------------------------------//
+	bool Image::Load(Stream* _src)
+	{
+		ASSERT(_src != nullptr);
+
+		stbi_io_callbacks _cb =
+		{
+			//read
+			[](void* _ud, char* _dst, int _size)
+		{
+			Stream* _src = reinterpret_cast<Stream*>(_ud);
+			return (int)_src->Read(_dst, _size);
+		},
+			//skip
+			[](void* _ud, int _n)
+		{
+			Stream* _src = reinterpret_cast<Stream*>(_ud);
+			_src->Seek(_n, Stream::SeekOrigin::Current);
+		},
+			//eof
+			[](void* _ud)
+		{
+			Stream* _src = reinterpret_cast<Stream*>(_ud);
+			return (int)_src->EoF();
+		}
+		};
+
+		int _w = 0, _h = 0, _c = 0;
+
+		uint8* _data = stbi_load_from_callbacks(&_cb, _src, &_w, &_h, &_c, 0);
+	
+		if (m_pixels)
+			free(m_pixels);
+
+		m_pixels = _data;
+		m_size.x = _w;
+		m_size.y = _h;
+		m_depth = 1;
+		m_channels = _c;
+
+		if (!_data)
+		{
+			LOG("Error: Unable to load image \"%s\": %s", m_name.c_str(), stbi_failure_reason());
+			return false;
+		}
+
+		return true;
+	}
+	//----------------------------------------------------------------------------//
+	bool Image::Save(Stream* _dst)
+	{
+		return Resource::Save(_dst);
+	}
+	//----------------------------------------------------------------------------//
+
+	//----------------------------------------------------------------------------//
+	// PixelFormat
+	//----------------------------------------------------------------------------//
+
+	//----------------------------------------------------------------------------//
+	bool PixelFormat::IsCompressed(Enum _format)
+	{
+		switch (_format)
+		{
+		case DXT1:
+		case DXT5:
+			return true;
+		}
+		return false;
+	}
+	//----------------------------------------------------------------------------//
+	PixelFormat::Enum PixelFormat::GetCompressedFormat(Enum _format)
+	{
+		switch (_format)
+		{
+		case R8:
+		case RG8:
+		case RGB8:
+			return DXT1;
+		case RGBA8:
+			return DXT5;
+		}
+		return _format;
+	}
+	//----------------------------------------------------------------------------//
+	PixelFormat::Enum PixelFormat::GetUncompressedFormat(Enum _format)
+	{
+		switch (_format)
+		{
+		case DXT1:
+			return RGB8;
+		case DXT5:
+			return RGBA8;
+		}
+		return _format;
+	}
+	//----------------------------------------------------------------------------//
+
+
+	struct GLPixelFormatDesc
+	{
+		uint bpp;
+		uint iformat;
+		uint type;
+		uint format;
+	}
+	const GLPixelFormat[]=
+	{
+		{ 8, GL_LUMINANCE8, GL_UNSIGNED_BYTE, GL_LUMINANCE }, // R8
+		{ 16, GL_LUMINANCE8_ALPHA8, GL_UNSIGNED_BYTE, GL_LUMINANCE_ALPHA }, // RG8
+		{ 24, GL_RGB8, GL_UNSIGNED_BYTE, GL_RGB }, // RGB8
+		{ 32, GL_RGBA8, GL_UNSIGNED_BYTE, GL_RGBA }, // RGBA8
+		{ 4, GL_COMPRESSED_RGBA_S3TC_DXT1_EXT, GL_UNSIGNED_BYTE, GL_RGB }, // DXT1
+		{ 8, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, GL_UNSIGNED_BYTE, GL_RGBA }, // DXT5
+	};
+
+	//----------------------------------------------------------------------------//
+	// Texture
+	//----------------------------------------------------------------------------//
+
+	const uint GLTextureType[] =
+	{
+		GL_TEXTURE_2D, // Default
+		GL_TEXTURE_3D // Volume
+	};
+
+	const uint GLUnusedTextureSlot = 5;
+
+	//----------------------------------------------------------------------------//
+	void Texture::Create(Type _type, PixelFormat::Enum _format)
+	{
+		Destroy();
+		m_type = _type;
+		m_format = _format;
+		glGenTextures(1, &m_handle);
+		_Bind(1);
+	}
+	//----------------------------------------------------------------------------//
+	void Texture::Destroy(void)
+	{
+		if (m_handle)
+		{
+			glDeleteTextures(1, &m_handle);
+			m_handle = 0;
+		}
+	}
+	//----------------------------------------------------------------------------//
+	void Texture::Realloc(uint _width, uint _height, uint _depth)
+	{
+		if (_depth == 0)
+			_depth = m_depth;
+		if (m_type == Type::Default)
+			_depth = 1;
+
+		m_size.x = _width;
+		m_size.y = _height;
+		m_depth = _depth;
+
+		const GLPixelFormatDesc& _pf = GLPixelFormat[m_format];
+
+		_Bind(GLUnusedTextureSlot);
+		if (m_type == Type::Default)
+		{
+			glTexImage2D(GLTextureType[(uint)m_type], 0, _pf.iformat, _width, _height, 0, _pf.format, _pf.type, nullptr);
+		}
+		else
+		{
+			glTexImage3D(GLTextureType[(uint)m_type], 0, _pf.iformat, _width, _height, _depth, 0, _pf.format, _pf.type, nullptr);
+		}
+	}
+	//----------------------------------------------------------------------------//
+	void Texture::Write(int _x, int _y, int _z, uint _w, uint _h, uint _d, PixelFormat::Enum _format, const void* _data)
+	{
+		const GLPixelFormatDesc& _pf = GLPixelFormat[_format];
+
+		_Bind(GLUnusedTextureSlot);
+		if (PixelFormat::IsCompressed(_format))
+		{
+			uint _size = (_pf.bpp * _w * _h * _d) >> 3;
+
+			if (m_type == Type::Default)
+			{
+				glCompressedTexSubImage2D(GLTextureType[(uint)m_type], 0, _x, _y, _w, _h, _pf.iformat, _size, _data);
+			}
+			else
+			{
+				glCompressedTexSubImage3D(GLTextureType[(uint)m_type], 0, _x, _y, _z, _w, _h, _d, _pf.iformat, _size, _data);
+			}
+		}
+		else
+		{
+			if (m_type == Type::Default)
+			{
+				glTexSubImage2D(GLTextureType[(uint)m_type], 0, _x, _y, _w, _h, _pf.format, _pf.type, _data);
+			}
+			else
+			{
+				glTexSubImage3D(GLTextureType[(uint)m_type], 0, _x, _y, _z, _w, _h, _d, _pf.format, _pf.type, _data);
+			}
+		}
+	}
+	//----------------------------------------------------------------------------//
+	void Texture::_Bind(uint _slot)
+	{
+		glActiveTexture(GL_TEXTURE0 + _slot);
+		glBindTexture(GLTextureType[(uint)m_type], m_handle);
+	}
+	//----------------------------------------------------------------------------//
+	bool Texture::Load(Stream* _src)
+	{
+		ASSERT(_src != nullptr);
+
+		Type _type = Type::Default;
+		String _source;
+		bool _useCompression = false;
+		StreamPtr _imgSrc = _src;
+		bool _flipX = false, _flipY = false;
+
+		String _ext = PathUtils::Extension(_src->Name());
+		if (!StringUtils::Cmpi(_ext.c_str(), "json"))
+		{
+			Json _desc;
+			if (!_desc.Load(_src))
+			{
+				LOG("Error: Unable to load Texture \"%s\" from \"%s\"", m_name.c_str(), _src->Name().c_str());
+				return false;
+			}
+
+			_type = StringUtils::Cmpi(_desc["Type"].AsString().c_str(), "volume") ? Type::Default : Type::Volume;
+			_source = _desc["Source"];
+			_flipX = _desc["FlipX"];
+			_flipY = _desc["FlipY"];
+			_useCompression = _desc["UseCompression"];
+
+			_imgSrc = gEngine->OpenFile(_source);
+		}
+
+		ImagePtr _img = new Image;
+		if (!_img->Load(_imgSrc))
+		{
+			LOG("Error: Unable to load Texture \"%s\" from \"%s\"", m_name.c_str(), _src->Name().c_str());
+			return false;
+		}
+
+		PixelFormat::Enum _format;
+		switch (_img->Channels())
+		{
+		case 1:
+			_format = PixelFormat::R8;
+			break;
+		case 2:
+			_format = PixelFormat::RG8;
+			break;
+		case 3:
+			_format = PixelFormat::RGB8;
+			break;
+		case 4:
+			_format = PixelFormat::RGBA8;
+			break;
+		}
+
+		Create(_type, _useCompression ? PixelFormat::GetCompressedFormat(_format) : _format);
+		Realloc(_img->Width(), _img->Height(), _img->Depth());
+		Write(0, 0, 0, _img->Width(), _img->Height(), _img->Depth(), _format, _img->Layer(0));
+
+		// temp
+		glGenerateMipmap(GLTextureType[(uint)m_type]);
+
+		return true;
+	}
+	//----------------------------------------------------------------------------//
+
+	//----------------------------------------------------------------------------//
 	// OpenGL
 	//----------------------------------------------------------------------------//
 
@@ -1073,6 +1675,8 @@ namespace Easy2D
 		// load opengl
 		{
 			wglSwapIntervalEXT = reinterpret_cast<decltype(wglSwapIntervalEXT)>(wglGetProcAddress("wglSwapIntervalEXT"));
+
+			ogl_LoadFunctions();
 		}
 
 		SetVSync(true);
@@ -1081,11 +1685,20 @@ namespace Easy2D
 		m_active = true;
 
 		m_batch = new Vertex[m_batchMaxSize];
+
+		AddPath(""); // root dir
+
+		Object::Register<Image>();
+		Object::Register<Texture>();
 	}
 	//----------------------------------------------------------------------------//
 	Engine::~Engine(void)
 	{
 		// TODO
+		glFlush();
+		glFinish();
+
+		m_resources.clear();
 	}
 	//----------------------------------------------------------------------------//
 	void Engine::RequireExit(bool _exit)
@@ -1115,6 +1728,10 @@ namespace Easy2D
 			}
 		}
 
+		m_texture = nullptr;
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glDisable(GL_TEXTURE_2D);
 
 		glViewport(0, 0, m_size.x, m_size.y);
 
@@ -1122,10 +1739,12 @@ namespace Easy2D
 		glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(Vertex), reinterpret_cast<uint8*>(m_batch) + offsetof(Vertex, color));
 
 		glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-		glTexCoordPointer(2, GL_FLOAT, sizeof(Vertex), reinterpret_cast<uint8*>(m_batch) + offsetof(Vertex, tc));
+		glTexCoordPointer(3, GL_FLOAT, sizeof(Vertex), reinterpret_cast<uint8*>(m_batch) + offsetof(Vertex, tc));
 
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glVertexPointer(3, GL_FLOAT, sizeof(Vertex), reinterpret_cast<uint8*>(m_batch) + offsetof(Vertex, pos));
+
+
 	}
 	//----------------------------------------------------------------------------//
 	void Engine::EndFrame(void)
@@ -1157,6 +1776,134 @@ namespace Easy2D
 		if (_scale < 0)
 			_scale = 0;
 		m_timeScale = _scale;
+	}
+	//----------------------------------------------------------------------------//
+	void Engine::AddPath(const String& _path)
+	{
+		String _fp;
+
+		if (!PathUtils::IsFullPath(_path.c_str()))
+		{
+			char _cd[4096];
+			getcwd(_cd, sizeof(_cd));
+			size_t _len = strlen(_cd);
+			if (!PathUtils::IsDelimeter(_cd[_len - 1]))
+				_cd[_len] = '/', _cd[_len + 1] = 0;
+
+			_fp = _cd + _path;
+		}
+		else
+		{
+			_fp = _path;
+		}
+
+		if (!PathUtils::IsDelimeter(_fp.back()))
+			_fp += "/";
+
+		uint _hash = StringUtils::Hash(_fp.c_str());
+		if (m_paths.find(_hash) == m_paths.end())
+		{
+			LOG("Add Path \"%s\" as \"%s\"", _path.c_str(), _fp.c_str());
+			m_paths[_hash] = _fp;
+		}
+	}
+	//----------------------------------------------------------------------------//
+	bool Engine::FileExists(const String& _name, String* _path)
+	{
+		if (PathUtils::IsFullPath(_name.c_str()))
+		{
+			FILE* _test = fopen(_name.c_str(), "rb");
+			if (_test)
+			{
+				fclose(_test);
+				if (_path)
+					*_path = _name;
+				return true;
+			}
+		}
+		else
+		{
+			for (const auto& i : m_paths)
+			{
+				ASSERT(PathUtils::IsFullPath(i.second.c_str()));
+				if (FileExists(i.second + _name, _path))
+					return true;
+			}
+		}
+		return false;
+	}
+	//----------------------------------------------------------------------------//
+	StreamPtr Engine::OpenFile(const String& _name, FileStream::Mode _mode)
+	{
+		FileStreamPtr _file = new FileStream;
+		String _path;
+
+		if (FileExists(_name, &_path) || _mode == FileStream::Mode::Overwrite || _mode == FileStream::Mode::ReadWrite)
+		{
+			_file->Open(_path, _mode);
+		}
+		else
+		{
+			LOG("Error: File \"%s\" not found", _name.c_str());
+		}
+
+		return _file.Cast<Stream>();
+	}
+	//----------------------------------------------------------------------------//
+	Resource* Engine::GetResource(const char* _type, const String& _name, uint _typeid)
+	{
+		if (!_typeid)
+			_typeid = StringUtils::Hash(_type);
+		uint _id = StringUtils::Hash(_name.c_str());
+		auto& _cache = m_resources[_typeid];
+
+		auto& _exists = _cache.find(_id);
+		if (_exists != _cache.end())
+			return _exists->second;
+
+		Object::TypeInfo* _typeinfo = Object::GetOrCreateTypeInfo(_type);
+		if (!_typeinfo->Factory)
+		{
+			LOG("Error: Unable to create %s \"%s\"", _type, _name.c_str());
+			return nullptr;
+		}
+
+		ResourcePtr _res = _typeinfo->Factory().Cast<Resource>();
+		ASSERT(_res != nullptr);
+
+		_cache[_id] = _res;
+
+		_res->SetName(_name);
+		_res->Load(OpenFile(_name));
+
+		return _res;
+	}
+	//----------------------------------------------------------------------------//
+	Resource* Engine::GetTempResource(const char* _type, const String& _name, uint _typeid)
+	{
+		if (!_typeid)
+			_typeid = StringUtils::Hash(_type);
+		uint _id = StringUtils::Hash(_name.c_str());
+		auto& _cache = m_resources[_typeid];
+
+		auto& _exists = _cache.find(_id);
+		if (_exists != _cache.end())
+			return _exists->second;
+
+		Object::TypeInfo* _typeinfo = Object::GetOrCreateTypeInfo(_type);
+		if (!_typeinfo->Factory)
+		{
+			LOG("Error: Unable to create %s \"%s\"", _type, _name.c_str());
+			return nullptr;
+		}
+
+		ResourcePtr _res = _typeinfo->Factory().Cast<Resource>();
+		ASSERT(_res != nullptr);
+
+		_res->SetName(_name);
+		_res->Load(OpenFile(_name));
+
+		return _res;
 	}
 	//----------------------------------------------------------------------------//
 	void Engine::Begin2D(const Vector2& _cameraPos, float _zoom)
@@ -1265,7 +2012,17 @@ namespace Easy2D
 		{
 			Flush();
 			m_texture = _texture;
-			//TODO: bind texture
+			if (m_texture)
+			{
+				m_texture->_Bind(0);
+				glEnable(GL_TEXTURE_2D); // temp
+			}
+			else
+			{
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, 0);
+				glDisable(GL_TEXTURE_2D);
+			}
 		}
 
 		if (m_batchMode != _mode)

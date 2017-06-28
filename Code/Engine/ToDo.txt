@@ -1,7 +1,12 @@
-- Json
-	- Загрузка и сохранение в файл
-- Sprite batch rendering
-- File
 - Resource
-- Texture
+	- async loading
+- Image
+	- dds support
+- TextureAtlas
 - Font/Text
+- 
+
+-Разделить class Engine на отдельные подсистемы
+- Избавиться от FFP
+
+! Найти причину вылета при закрытии приложения

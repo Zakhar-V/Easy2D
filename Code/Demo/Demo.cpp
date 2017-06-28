@@ -20,8 +20,16 @@ struct SpriteDesc
 
 		if (_angle != 0)
 		{
-			float _s = sinf(_angle);
-			float _c = cosf(_angle);
+			float _s, _c;
+#ifdef _MSC_VER
+			__asm fld _angle;
+			__asm fsincos;
+			__asm fstp _c;
+			__asm fstp _s;
+#else
+			_s = sinf(_angle);
+			_c = cosf(_angle);
+#endif
 			float _xc1 = _x1 * _c;
 			float _yc1 = _y1 * _c;
 			float _xc2 = _x2 * _c;
@@ -45,54 +53,77 @@ struct SpriteDesc
 			_quad[0].pos.x = _x1 + _x;
 			_quad[0].pos.y = _y1 + _y;
 			_quad[1].pos.x = _x2 + _x;
-			_quad[1].pos.y = _y1 + _y;
-			_quad[2].pos.x = _x2 + _x;
+			_quad[1].pos.y = _quad[0].pos.y;
+			_quad[2].pos.x = _quad[1].pos.x;
 			_quad[2].pos.y = _y2 + _y;
-			_quad[3].pos.x = _x1 + _x;
-			_quad[3].pos.y = _y2 + _y;
+			_quad[3].pos.x = _quad[0].pos.x;
+			_quad[3].pos.y = _quad[2].pos.y;
 		}
 		
-		// TODO: texcoord
-
+		float _layer = 0;
 		float _z = 0;
-		Color4ub _color = {0xff, 0, 0, 1}; // TODO
+		Color4ub _color = {0xff, 0xff, 0xff, 0xff}; // TODO
 		for (uint i = 0; i < 4; ++i)
 		{
 			_quad[i].pos.z = _z;
 			_quad[i].color = _color;
-			_quad[i].color.g = 64 * i; // temp
+			_quad[i].tc.z = _layer;
 		}
+
+		_quad[0].tc.x = tc.lower.x;
+		_quad[0].tc.y = tc.lower.y;
+
+		_quad[1].tc.x = tc.upper.x;
+		_quad[1].tc.y = tc.lower.y;
+
+		_quad[2].tc.x = tc.upper.x;
+		_quad[2].tc.y = tc.upper.y;
+
+		_quad[3].tc.x = tc.lower.x;
+		_quad[3].tc.y = tc.upper.y;
 	}
 
 };
 
+#include <Windows.h>
+
 void main(void)
 {
+	// SetThreadAffinityMask(GetCurrentThread(), 1); // test
+
 	Engine _engine;
-
-	gEngine->SetVSync(false);
-
-	SpriteDesc _sprite;
-	_sprite.pivot = { .5f, .5f };
-	_sprite.size = { 16, 16 };
-
-	while (gEngine->IsOpened())
 	{
-		gEngine->BeginFrame();
+		gEngine->SetVSync(false);
 
-		gEngine->Clear(FrameBufferType::All, { .7f ,.7f , .75f , 1 });
+		gEngine->AddPath("Data/");
+		gEngine->AddPath("../../Data/");
 
-		gEngine->Begin2D({ 0, 0 }, 1);
+		SpriteDesc _sprite;
+		_sprite.pivot = { .5f, .5f };
+		_sprite.size = { 64, 64 };
+		_sprite.tc.lower = { 0, 0 };
+		_sprite.tc.upper = { 1, 1 };
+		_sprite.texture = gEngine->GetResource<Texture>("test.json");
 
-		srand(0);
-		for (uint i = 0; i < 100000; ++i)
+		while (gEngine->IsOpened())
 		{
-			_sprite.Draw(rand() % gEngine->WindowSize().x, rand() % gEngine->WindowSize().y, .5f, 1, 1, 0);
-		}	
+			gEngine->BeginFrame();
 
-		gEngine->EndFrame();
+			gEngine->Clear(FrameBufferType::All, { .7f ,.7f , .75f , 1 });
 
-		if (gEngine->UserRequireExit())
-			gEngine->RequireExit();
+			gEngine->Begin2D({ 0, 0 }, 1);
+
+			srand(0);
+			for (uint i = 0; i < 20000; ++i)
+			{
+				_sprite.Draw(rand() % gEngine->WindowSize().x, rand() % gEngine->WindowSize().y, .5f, 1, 1, 0);
+				//_sprite.Draw(300, 300, 0, 1, 1, 0);
+			}
+
+			gEngine->EndFrame();
+
+			if (gEngine->UserRequireExit())
+				gEngine->RequireExit();
+		}
 	}
 }

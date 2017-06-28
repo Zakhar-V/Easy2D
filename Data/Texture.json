@@ -1,0 +1,11 @@
+{
+  "Source": "run.gif",
+  "FlipX": false,
+  "FlipY": false,
+  "UseCompression": false,
+  "Atlas": {
+    "Type": "Grid",
+    "Cells": [ 1, 1 ],
+    "Border": [ 0, 0 ]
+  }
+}

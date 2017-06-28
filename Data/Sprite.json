@@ -1,0 +1,6 @@
+{
+  "Texture": "test.json",
+  "Cells": [ 1, 1 ],
+  "Border": [ 0, 0 ],
+  "Pivot": [0.5, 0.5]
+}
