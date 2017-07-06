@@ -16,21 +16,66 @@
     <Filter Include="GL">
       <UniqueIdentifier>{10df6073-739f-4803-84e4-9997b5c4dc8b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine">
+      <UniqueIdentifier>{a64a2167-2ffc-4222-8c4c-f97eaf81d1e8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\NEW">
+      <UniqueIdentifier>{21eb71fa-2fa6-4c2b-9f66-ae4479749d39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\NEW__">
+      <UniqueIdentifier>{c696a09b-ca9f-40ce-907a-0b238aa4871a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Easy2D.cpp">
-      <Filter>Файлы исходного кода</Filter>
-    </ClCompile>
     <ClCompile Include="..\ThirdParty\glLoadGen\GL\gl_Load.c">
       <Filter>GL</Filter>
     </ClCompile>
+    <ClCompile Include="Easy2D.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Base.cpp">
+      <Filter>Engine\NEW</Filter>
+    </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>Engine\NEW</Filter>
+    </ClCompile>
+    <ClCompile Include="System.cpp">
+      <Filter>Engine\NEW</Filter>
+    </ClCompile>
+    <ClCompile Include="File.cpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClCompile>
+    <ClCompile Include="Time.cpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClCompile>
+    <ClCompile Include="Json.cpp">
+      <Filter>Engine\NEW</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Easy2D.hpp">
-      <Filter>Заголовочные файлы</Filter>
-    </ClInclude>
     <ClInclude Include="..\ThirdParty\glLoadGen\GL\gl_Load.h">
       <Filter>GL</Filter>
+    </ClInclude>
+    <ClInclude Include="Easy2D.hpp">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Base.hpp">
+      <Filter>Engine\NEW</Filter>
+    </ClInclude>
+    <ClInclude Include="Object.hpp">
+      <Filter>Engine\NEW</Filter>
+    </ClInclude>
+    <ClInclude Include="System.hpp">
+      <Filter>Engine\NEW</Filter>
+    </ClInclude>
+    <ClInclude Include="File.hpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClInclude>
+    <ClInclude Include="Time.hpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClInclude>
+    <ClInclude Include="Json.hpp">
+      <Filter>Engine\NEW__</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

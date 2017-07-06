@@ -95,8 +95,8 @@ void main(void)
 	{
 		gEngine->SetVSync(false);
 
-		gEngine->AddPath("Data/");
-		gEngine->AddPath("../../Data/");
+		gFileSystem->AddPath("Data/");
+		gFileSystem->AddPath("../../Data/");
 
 		SpriteDesc _sprite;
 		_sprite.pivot = { .5f, .5f };
