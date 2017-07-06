@@ -10,6 +10,9 @@
 
 #include "Json.hpp"
 
+typedef struct SDL_Window SDL_Window;
+typedef void* SDL_GLContext;
+
 namespace Easy2D
 {
 	//----------------------------------------------------------------------------//
@@ -391,19 +394,9 @@ namespace Easy2D
 		Vertex* AddBatch(PrimitiveType::Enum _type, uint _count, Texture* _texture, uint _mode);
 
 	protected:
-		//!
-		static long __stdcall _WindowCallback(void* _wnd, uint _msg, uint _wParam, long _lParam);
-		//!
-		long _HandleMessage(uint _msg, uint _wParam, long _lParam);
 
-
-		int m_wndcls = 0;
-		void* m_window = nullptr;
-		void* m_dc = nullptr;
-		void* m_rc = nullptr;
-		bool m_fullscreen = false;
-		bool m_active = false;
-
+		SDL_Window* m_window = nullptr;
+		SDL_GLContext m_context = nullptr;
 		IntVector2 m_size = { 0, 0 };
 
 		bool m_opened = false;

@@ -13,6 +13,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h" // https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
 
+extern "C"
+{
+#include <SDL.h>
+}
 
 namespace Easy2D
 {
@@ -457,11 +461,12 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 	//----------------------------------------------------------------------------//
 	Engine::Engine(void)
 	{
+		SDL_Init(SDL_INIT_VIDEO);
 		// window class
-		WNDCLASSA _wc;
+		/*WNDCLASSA _wc;
 		{
 			memset(&_wc, 0, sizeof(_wc));
-			_wc.style = /*CS_HREDRAW | CS_VREDRAW | CS_OWNDC |*/ CS_DBLCLKS;
+			_wc.style = /*CS_HREDRAW | CS_VREDRAW | CS_OWNDC |* / CS_DBLCLKS;
 			_wc.lpfnWndProc = reinterpret_cast<decltype(DefDlgProcA)*>(&_WindowCallback);
 			_wc.hInstance = GetModuleHandleA("");
 			_wc.hIcon = LoadIconA(nullptr, IDI_APPLICATION);
@@ -469,11 +474,12 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 			_wc.lpszClassName = "test";
 			m_wndcls = RegisterClassA(&_wc);
 			CHECK(m_wndcls != 0, "RegisterClassA Failed");
-		}
+		}*/
 
 
 		// create window
 		{
+			/*
 #if 0 // fullscreen
 			int _width = GetSystemMetrics(SM_CXSCREEN);
 			int _height = GetSystemMetrics(SM_CYSCREEN);
@@ -484,16 +490,20 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 			m_window = CreateWindowA(_wc.lpszClassName, "GL benchmark", WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, HWND_DESKTOP, nullptr, _wc.hInstance, nullptr);
 			m_fullscreen = false;
 #endif
+			*/
 
+			m_window = SDL_CreateWindow("Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
 			CHECK(m_window != nullptr, "CreateWindowA Failed");
 		}
 
 		// get window size
 		{
-			RECT _rect;
+			/*RECT _rect;
 			GetClientRect((HWND)m_window, &_rect);
 			m_size.x = _rect.right - _rect.left;
-			m_size.y = _rect.bottom - _rect.top;
+			m_size.y = _rect.bottom - _rect.top;*/
+
+			SDL_GetWindowSize(m_window, &m_size.x, &m_size.y);
 		}
 
 		// get cursor pos
@@ -502,7 +512,7 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		}
 
 
-		m_dc = GetDC((HWND)m_window);
+		/*m_dc = GetDC((HWND)m_window);
 
 		// pixel format
 		{
@@ -527,6 +537,10 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 			wglMakeCurrent((HDC)m_dc, (HGLRC)m_rc);
 
 			//TODO: use wglCreateContextAttribsARB 
+		} */
+
+		{
+			m_context = SDL_GL_CreateContext(m_window);
 		}
 
 		// load opengl
@@ -539,7 +553,7 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		SetVSync(true);
 
 		m_opened = true;
-		m_active = true;
+		//m_active = true;
 
 		m_batch = new Vertex[m_batchMaxSize];
 
@@ -565,12 +579,36 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 	{
 		System::SendEvent(SystemEvent::BeginFrame);
 		// events
-		{
+		/*{
 			m_userRequireExit = false;
 			for (MSG _msg; PeekMessageA(&_msg, nullptr, 0, 0, PM_REMOVE);)
 			{
 				TranslateMessage(&_msg);
 				DispatchMessageA(&_msg);
+			}
+		}*/
+
+		{
+			SDL_Event _event;
+			while (SDL_PollEvent(&_event))
+			{
+				switch (_event.type)
+				{
+				case SDL_WINDOWEVENT:
+					switch (_event.window.event)
+					{
+
+					case SDL_WINDOWEVENT_RESIZED:
+						m_size.x = _event.window.data1;
+						m_size.y = _event.window.data2;
+						break;
+
+					case SDL_WINDOWEVENT_CLOSE:
+						m_userRequireExit = true;
+						break;
+					}
+					break;
+				}
 			}
 		}
 
@@ -599,7 +637,8 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		System::SendEvent(SystemEvent::EndFrame);
 		Flush();
 
-		SwapBuffers((HDC)m_dc);
+		//SwapBuffers((HDC)m_dc);
+		SDL_GL_SwapWindow(m_window);
 
 		if (m_vsync)
 			Sleep(1); // relax
@@ -802,7 +841,7 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		return _batch;
 	}
 	//----------------------------------------------------------------------------//
-	long __stdcall Engine::_WindowCallback(void* _wnd, uint _msg, uint _wParam, long _lParam)
+	/*long __stdcall Engine::_WindowCallback(void* _wnd, uint _msg, uint _wParam, long _lParam)
 	{
 		if (s_instance && s_instance->m_window == _wnd)
 			return s_instance->_HandleMessage(_msg, _wParam, _lParam);
@@ -840,7 +879,7 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		}
 
 		return DefWindowProcA((HWND)m_window, _msg, _wParam, _lParam);
-	}
+	}*/
 	//----------------------------------------------------------------------------//
 
 	//----------------------------------------------------------------------------//
