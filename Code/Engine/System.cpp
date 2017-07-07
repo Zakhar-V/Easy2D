@@ -33,17 +33,23 @@ namespace Easy2D
 			s_last = m_prev;
 	}
 	//----------------------------------------------------------------------------//
-	bool System::SendEvent(int _event, void* _arg)
+	bool System::SendEvent(int _event, void* _arg, bool _defaultOrder)
 	{
-		/*for (System* i = s_first; i; i = i->m_next)
+		if (_defaultOrder)
 		{
-		if (i->OnEvent(_event, _arg))
-		return true;
-		}*/
-		for (System* i = s_last; i; i = i->m_prev)
+			for (System* i = s_last; i; i = i->m_prev)
+			{
+				if (i->OnEvent(_event, _arg))
+					return true;
+			}
+		}
+		else
 		{
-			if (i->OnEvent(_event, _arg))
-				return true;
+			for (System* i = s_first; i; i = i->m_next)
+			{
+				if (i->OnEvent(_event, _arg))
+					return true;
+			}
 		}
 		return false;
 	}

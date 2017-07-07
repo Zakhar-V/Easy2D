@@ -70,17 +70,17 @@ struct SpriteDesc
 			_quad[i].tc.z = _layer;
 		}
 
-		_quad[0].tc.x = tc.lower.x;
-		_quad[0].tc.y = tc.lower.y;
+		_quad[0].tc.x = tc.left;
+		_quad[0].tc.y = tc.top;
 
-		_quad[1].tc.x = tc.upper.x;
-		_quad[1].tc.y = tc.lower.y;
+		_quad[1].tc.x = tc.right;
+		_quad[1].tc.y = tc.top;
 
-		_quad[2].tc.x = tc.upper.x;
-		_quad[2].tc.y = tc.upper.y;
+		_quad[2].tc.x = tc.right;
+		_quad[2].tc.y = tc.bottom;
 
-		_quad[3].tc.x = tc.lower.x;
-		_quad[3].tc.y = tc.upper.y;
+		_quad[3].tc.x = tc.left;
+		_quad[3].tc.y = tc.bottom;
 	}
 
 };
@@ -101,11 +101,10 @@ void main(void)
 		SpriteDesc _sprite;
 		_sprite.pivot = { .5f, .5f };
 		_sprite.size = { 64, 64 };
-		_sprite.tc.lower = { 0, 0 };
-		_sprite.tc.upper = { 1, 1 };
+		_sprite.tc = { 0, 0, 1, 1 };
 		_sprite.texture = gEngine->GetResource<Texture>("test.json");
 
-		while (gEngine->IsOpened())
+		while (gDevice->IsOpened())
 		{
 			gEngine->BeginFrame();
 
@@ -116,14 +115,14 @@ void main(void)
 			srand(0);
 			for (uint i = 0; i < 20000; ++i)
 			{
-				_sprite.Draw(rand() % gEngine->WindowSize().x, rand() % gEngine->WindowSize().y, .5f, 1, 1, 0);
+				_sprite.Draw(rand() % gDevice->WindowSize().x, rand() % gDevice->WindowSize().y, .5f, 1, 1, 0);
 				//_sprite.Draw(300, 300, 0, 1, 1, 0);
 			}
 
 			gEngine->EndFrame();
 
-			if (gEngine->UserRequireExit())
-				gEngine->RequireExit();
+			if (gDevice->UserRequireExit())
+				gDevice->RequireExit();
 		}
 	}
 }

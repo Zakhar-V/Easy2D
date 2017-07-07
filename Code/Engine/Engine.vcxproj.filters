@@ -51,6 +51,21 @@
     <ClCompile Include="Json.cpp">
       <Filter>Engine\NEW</Filter>
     </ClCompile>
+    <ClCompile Include="Device.cpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics.cpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClCompile>
+    <ClCompile Include="GLGraphics.cpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClCompile>
+    <ClCompile Include="GLDevice.cpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClCompile>
+    <ClCompile Include="Math.cpp">
+      <Filter>Engine\NEW</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ThirdParty\glLoadGen\GL\gl_Load.h">
@@ -74,8 +89,23 @@
     <ClInclude Include="Time.hpp">
       <Filter>Engine\NEW__</Filter>
     </ClInclude>
-    <ClInclude Include="Json.hpp">
+    <ClInclude Include="Device.hpp">
       <Filter>Engine\NEW__</Filter>
+    </ClInclude>
+    <ClInclude Include="Json.hpp">
+      <Filter>Engine\NEW</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics.hpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClInclude>
+    <ClInclude Include="GLGraphics.hpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClInclude>
+    <ClInclude Include="GLDevice.hpp">
+      <Filter>Engine\NEW__</Filter>
+    </ClInclude>
+    <ClInclude Include="Math.hpp">
+      <Filter>Engine\NEW</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -43,7 +43,7 @@ namespace Easy2D
 		virtual bool OnEvent(int _type, void* _arg) { return false; }
 
 		//!
-		static bool SendEvent(int _event, void* _arg = nullptr);
+		static bool SendEvent(int _event, void* _arg = nullptr, bool _defaultOrder = true);
 
 	private:
 

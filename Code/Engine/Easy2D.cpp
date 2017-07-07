@@ -1,6 +1,8 @@
 
 #include "Easy2D.hpp"
 
+#include "GLDevice.hpp"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -13,10 +15,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h" // https://raw.githubusercontent.com/nothings/stb/master/stb_image.h
 
-extern "C"
-{
-#include <SDL.h>
-}
 
 namespace Easy2D
 {
@@ -461,99 +459,20 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 	//----------------------------------------------------------------------------//
 	Engine::Engine(void)
 	{
-		SDL_Init(SDL_INIT_VIDEO);
-		// window class
-		/*WNDCLASSA _wc;
-		{
-			memset(&_wc, 0, sizeof(_wc));
-			_wc.style = /*CS_HREDRAW | CS_VREDRAW | CS_OWNDC |* / CS_DBLCLKS;
-			_wc.lpfnWndProc = reinterpret_cast<decltype(DefDlgProcA)*>(&_WindowCallback);
-			_wc.hInstance = GetModuleHandleA("");
-			_wc.hIcon = LoadIconA(nullptr, IDI_APPLICATION);
-			_wc.hCursor = LoadCursorA(nullptr, IDC_ARROW);
-			_wc.lpszClassName = "test";
-			m_wndcls = RegisterClassA(&_wc);
-			CHECK(m_wndcls != 0, "RegisterClassA Failed");
-		}*/
+		new Time;
+		new FileSystem;
+		new GLDevice;
 
-
-		// create window
-		{
-			/*
-#if 0 // fullscreen
-			int _width = GetSystemMetrics(SM_CXSCREEN);
-			int _height = GetSystemMetrics(SM_CYSCREEN);
-
-			m_window = CreateWindowA(_wc.lpszClassName, "GL benchmark", WS_POPUP | WS_VISIBLE, 0, 0, _width, _height, HWND_DESKTOP, nullptr, _wc.hInstance, nullptr);
-			m_fullscreen = true;
-#else
-			m_window = CreateWindowA(_wc.lpszClassName, "GL benchmark", WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, HWND_DESKTOP, nullptr, _wc.hInstance, nullptr);
-			m_fullscreen = false;
-#endif
-			*/
-
-			m_window = SDL_CreateWindow("Test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 800, 600, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
-			CHECK(m_window != nullptr, "CreateWindowA Failed");
-		}
-
-		// get window size
-		{
-			/*RECT _rect;
-			GetClientRect((HWND)m_window, &_rect);
-			m_size.x = _rect.right - _rect.left;
-			m_size.y = _rect.bottom - _rect.top;*/
-
-			SDL_GetWindowSize(m_window, &m_size.x, &m_size.y);
-		}
-
-		// get cursor pos
-		{
-
-		}
-
-
-		/*m_dc = GetDC((HWND)m_window);
-
-		// pixel format
-		{
-			PIXELFORMATDESCRIPTOR _pfd;
-			memset(&_pfd, 0, sizeof(_pfd));
-			_pfd.nSize = sizeof(_pfd);
-			_pfd.nVersion = 1;
-			_pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-			_pfd.cColorBits = 32;
-			_pfd.cDepthBits = 24;
-			_pfd.cStencilBits = 8;
-
-			int _fmt = ChoosePixelFormat((HDC)m_dc, &_pfd);
-			int _result = SetPixelFormat((HDC)m_dc, _fmt, &_pfd);
-			CHECK(_result, "SetPixelFormat Failed");
-		}
-
-		// create opengl context
-		{
-			m_rc = wglCreateContext((HDC)m_dc);
-			CHECK(m_rc != nullptr, "wglCreateContext failed");
-			wglMakeCurrent((HDC)m_dc, (HGLRC)m_rc);
-
-			//TODO: use wglCreateContextAttribsARB 
-		} */
-
-		{
-			m_context = SDL_GL_CreateContext(m_window);
-		}
+		System::SendEvent(SystemEvent::Startup);
 
 		// load opengl
 		{
 			wglSwapIntervalEXT = reinterpret_cast<decltype(wglSwapIntervalEXT)>(wglGetProcAddress("wglSwapIntervalEXT"));
 
-			ogl_LoadFunctions();
 		}
 
 		SetVSync(true);
 
-		m_opened = true;
-		//m_active = true;
 
 		m_batch = new Vertex[m_batchMaxSize];
 
@@ -568,57 +487,24 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		glFinish();
 
 		m_resources.clear();
-	}
-	//----------------------------------------------------------------------------//
-	void Engine::RequireExit(bool _exit)
-	{
-		m_opened = !_exit;
+
+		System::SendEvent(SystemEvent::Shutdown, nullptr, false);
+
+		delete gDevice;
+		delete gFileSystem;
+		delete gTime;
 	}
 	//----------------------------------------------------------------------------//
 	void Engine::BeginFrame(void)
 	{
 		System::SendEvent(SystemEvent::BeginFrame);
-		// events
-		/*{
-			m_userRequireExit = false;
-			for (MSG _msg; PeekMessageA(&_msg, nullptr, 0, 0, PM_REMOVE);)
-			{
-				TranslateMessage(&_msg);
-				DispatchMessageA(&_msg);
-			}
-		}*/
-
-		{
-			SDL_Event _event;
-			while (SDL_PollEvent(&_event))
-			{
-				switch (_event.type)
-				{
-				case SDL_WINDOWEVENT:
-					switch (_event.window.event)
-					{
-
-					case SDL_WINDOWEVENT_RESIZED:
-						m_size.x = _event.window.data1;
-						m_size.y = _event.window.data2;
-						break;
-
-					case SDL_WINDOWEVENT_CLOSE:
-						m_userRequireExit = true;
-						break;
-					}
-					break;
-				}
-			}
-		}
-
 
 		m_texture = nullptr;
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glDisable(GL_TEXTURE_2D);
 
-		glViewport(0, 0, m_size.x, m_size.y);
+		glViewport(0, 0, gDevice->WindowSize().x, gDevice->WindowSize().y);
 
 		glEnableClientState(GL_COLOR_ARRAY);
 		glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(Vertex), reinterpret_cast<uint8*>(m_batch) + offsetof(Vertex, color));
@@ -628,17 +514,13 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 
 		glEnableClientState(GL_VERTEX_ARRAY);
 		glVertexPointer(3, GL_FLOAT, sizeof(Vertex), reinterpret_cast<uint8*>(m_batch) + offsetof(Vertex, pos));
-
-
 	}
 	//----------------------------------------------------------------------------//
 	void Engine::EndFrame(void)
 	{
-		System::SendEvent(SystemEvent::EndFrame);
 		Flush();
 
-		//SwapBuffers((HDC)m_dc);
-		SDL_GL_SwapWindow(m_window);
+		System::SendEvent(SystemEvent::EndFrame);
 
 		if (m_vsync)
 			Sleep(1); // relax
@@ -712,7 +594,7 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		Flush();
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		glOrtho(0, m_size.x, m_size.y, 0, 0, 1);
+		glOrtho(0, gDevice->WindowSize().x, gDevice->WindowSize().y, 0, 0, 1);
 
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
@@ -840,46 +722,6 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		m_batchSize += _count;
 		return _batch;
 	}
-	//----------------------------------------------------------------------------//
-	/*long __stdcall Engine::_WindowCallback(void* _wnd, uint _msg, uint _wParam, long _lParam)
-	{
-		if (s_instance && s_instance->m_window == _wnd)
-			return s_instance->_HandleMessage(_msg, _wParam, _lParam);
-
-
-		return DefWindowProcA((HWND)_wnd, _msg, _wParam, _lParam);
-	}
-	//----------------------------------------------------------------------------//
-	long Engine::_HandleMessage(uint _msg, uint _wParam, long _lParam)
-	{
-		switch (_msg)
-		{
-		case WM_SETFOCUS:
-			m_active = true;
-			break;
-
-		case WM_KILLFOCUS:
-			m_active = false;
-			break;
-
-		case WM_CLOSE:
-			m_userRequireExit = true;
-			return 0;
-
-		case WM_SIZE:
-		{
-			if (_wParam == SIZE_MAXIMIZED || _wParam == SIZE_RESTORED)
-			{
-				m_size.x = LOWORD(_lParam);
-				m_size.y = HIWORD(_lParam);
-			}
-		}
-		break;
-
-		}
-
-		return DefWindowProcA((HWND)m_window, _msg, _wParam, _lParam);
-	}*/
 	//----------------------------------------------------------------------------//
 
 	//----------------------------------------------------------------------------//

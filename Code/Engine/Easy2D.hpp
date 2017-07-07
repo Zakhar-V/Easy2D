@@ -9,149 +9,16 @@
 #include "Time.hpp"
 
 #include "Json.hpp"
+#include "Math.hpp"
 
-typedef struct SDL_Window SDL_Window;
-typedef void* SDL_GLContext;
+#include "Device.hpp"
+
 
 namespace Easy2D
 {
 	//----------------------------------------------------------------------------//
 	// 
 	//----------------------------------------------------------------------------//
-
-	template <class T> T Min(T _a, T _b)
-	{
-		return _a < _b ? _a : _b;
-	}
-	template <class T> T Max(T _a, T _b)
-	{
-		return _a > _b ? _a : _b;
-	}
-	template <class T> T Clamp(T _value, T _min, T _max)
-	{
-		return Max(_min, Min(_value, _max));
-	}
-
-	struct IntVector2
-	{
-		union
-		{
-			struct
-			{
-				int x, y;
-			};
-			int v[2];
-		};
-	};
-
-
-	struct Vector2
-	{
-		union
-		{
-			struct
-			{
-				float x, y;
-			};
-			float v[2];
-		};
-	};
-
-	struct Vector3
-	{
-		union
-		{
-			struct
-			{
-				float x, y, z;
-			};
-			float v[3];
-		};
-	};
-
-	struct Vector4
-	{
-		union
-		{
-			struct
-			{
-				float x, y, z, w;
-			};
-			struct
-			{
-				float r, g, b, a;
-			};
-			float v[4];
-		};
-	};
-
-	struct Quaternion
-	{
-		union
-		{
-			struct
-			{
-				float x, y, z, w;
-			};
-			float v[4];
-		};
-	};
-
-	struct Matrix34
-	{
-		union
-		{
-			struct
-			{
-				float m00, m01, m02, m03;
-				float m10, m11, m12, m13;
-				float m20, m21, m22, m23;
-			};
-			float m[3][4];
-			float v[12];
-		};
-	};
-
-	struct Matrix44
-	{
-		//Matrix44& CreateOrtho2D(float _width, float _height);
-
-		//const Matrix44 Zero;
-		//const Matrix44 Identity;
-
-		union
-		{
-			struct
-			{
-				float m00, m01, m02, m03;
-				float m10, m11, m12, m13;
-				float m20, m21, m22, m23;
-				float m30, m31, m32, m33;
-			};
-			float m[4][4];
-			float v[16];
-		};
-	};
-
-	struct Rect
-	{
-		Vector2 lower = { 0, 0 };
-		Vector2 upper = { 0, 0 };
-	};
-
-	struct Color4ub
-	{
-		union
-		{
-			struct
-			{
-				uint8 r, g, b, a;
-			};
-			uint8 v[4];
-			uint8 rgba;
-		};
-	};
-
 
 
 	//----------------------------------------------------------------------------//
@@ -338,17 +205,7 @@ namespace Easy2D
 		//!
 		~Engine(void);
 
-		//
-		const IntVector2& WindowSize(void) { return m_size; }
-
 		// [LOOP]
-
-		//!
-		bool IsOpened(void) { return m_opened; }
-		//!
-		bool UserRequireExit(void) { return m_userRequireExit; }
-		//!
-		void RequireExit(bool _exit = true);
 
 		//!
 		void BeginFrame(void);
@@ -357,11 +214,6 @@ namespace Easy2D
 
 		//!
 		void SetVSync(bool _vsync);
-
-		// [TIME]
-
-
-		// [FILE SYSTEM]
 
 		// [RESOURCES]
 
@@ -395,13 +247,6 @@ namespace Easy2D
 
 	protected:
 
-		SDL_Window* m_window = nullptr;
-		SDL_GLContext m_context = nullptr;
-		IntVector2 m_size = { 0, 0 };
-
-		bool m_opened = false;
-		bool m_userRequireExit = false;
-
 		bool m_vsync = true;
 
 		PrimitiveType::Enum m_batchType = PrimitiveType::Points;
@@ -414,9 +259,6 @@ namespace Easy2D
 
 
 		HashMap<uint, HashMap<uint, ResourcePtr>> m_resources;
-
-		Time m_time;
-		FileSystem m_fileSystem;
 	};
 
 

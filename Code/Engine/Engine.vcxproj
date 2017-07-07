@@ -21,9 +21,14 @@
   <ItemGroup>
     <ClCompile Include="..\ThirdParty\glLoadGen\GL\gl_Load.c" />
     <ClCompile Include="Base.cpp" />
+    <ClCompile Include="Device.cpp" />
     <ClCompile Include="Easy2D.cpp" />
     <ClCompile Include="File.cpp" />
+    <ClCompile Include="GLDevice.cpp" />
+    <ClCompile Include="GLGraphics.cpp" />
+    <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="Json.cpp" />
+    <ClCompile Include="Math.cpp" />
     <ClCompile Include="Object.cpp" />
     <ClCompile Include="System.cpp" />
     <ClCompile Include="Time.cpp" />
@@ -31,9 +36,14 @@
   <ItemGroup>
     <ClInclude Include="..\ThirdParty\glLoadGen\GL\gl_Load.h" />
     <ClInclude Include="Base.hpp" />
+    <ClInclude Include="Device.hpp" />
     <ClInclude Include="Easy2D.hpp" />
     <ClInclude Include="File.hpp" />
+    <ClInclude Include="GLDevice.hpp" />
+    <ClInclude Include="GLGraphics.hpp" />
+    <ClInclude Include="Graphics.hpp" />
     <ClInclude Include="Json.hpp" />
+    <ClInclude Include="Math.hpp" />
     <ClInclude Include="Object.hpp" />
     <ClInclude Include="System.hpp" />
     <ClInclude Include="Time.hpp" />
