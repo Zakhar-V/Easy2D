@@ -13,6 +13,7 @@
 
 #include "Device.hpp"
 
+#include "Resource.hpp"
 
 namespace Easy2D
 {
@@ -58,28 +59,6 @@ namespace Easy2D
 	//----------------------------------------------------------------------------//
 	// Resource
 	//----------------------------------------------------------------------------//
-
-	typedef SharedPtr<class Resource> ResourcePtr;
-
-	//!
-	class Resource : public Object
-	{
-	public:
-		RTTI("Resource");
-
-		//!
-		virtual bool Load(Stream* _src);
-		//!
-		virtual bool Save(Stream* _dst);
-
-		//!
-		void SetName(const String& _name) { m_name = _name; }
-		//!
-		const String& GetName(void) { return m_name; }
-
-	protected:
- 		String m_name;
-	};
 
 	//----------------------------------------------------------------------------//
 	// Image
@@ -215,23 +194,6 @@ namespace Easy2D
 		//!
 		void SetVSync(bool _vsync);
 
-		// [RESOURCES]
-
-		//!
-		Resource* GetResource(const char* _type, const String& _name, uint _typeid = 0);
-		//!
-		Resource* GetTempResource(const char* _type, const String& _name, uint _typeid = 0);
-		//!
-		template <class T> T* GetResource(const String& _name)
-		{
-			return static_cast<T*>(GetResource(T::TypeName, _name, T::TypeID));
-		}
-		//!
-		template <class T> T* GetTempResource(const String& _name)
-		{
-			return static_cast<T*>(GetTempResource(T::TypeName, _name, T::TypeID));
-		}
-
 		// [DRAW]
 
 		//!
@@ -256,9 +218,6 @@ namespace Easy2D
 		Vertex* m_batch = nullptr;
 		uint m_batchSize = 0;
 		uint m_batchMaxSize = 0xffff;
-
-
-		HashMap<uint, HashMap<uint, ResourcePtr>> m_resources;
 	};
 
 

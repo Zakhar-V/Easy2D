@@ -20,24 +20,6 @@ namespace Easy2D
 {
 
 	//----------------------------------------------------------------------------//
-	// Resource
-	//----------------------------------------------------------------------------//
-	
-	//----------------------------------------------------------------------------//
-	bool Resource::Load(Stream* _src)
-	{
-		LOG("Error: Load not supported for %s", TypeName);
-		return false;
-	}
-	//----------------------------------------------------------------------------//
-	bool Resource::Save(Stream* _dst)
-	{
-		LOG("Error: Save not supported for %s", TypeName);
-		return false;
-	}
-	//----------------------------------------------------------------------------//
-
-	//----------------------------------------------------------------------------//
 	// Image
 	//----------------------------------------------------------------------------//
 	
@@ -462,6 +444,7 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		new Time;
 		new FileSystem;
 		new GLDevice;
+		new ResourceCache;
 
 		System::SendEvent(SystemEvent::Startup);
 
@@ -486,10 +469,9 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		glFlush();
 		glFinish();
 
-		m_resources.clear();
-
 		System::SendEvent(SystemEvent::Shutdown, nullptr, false);
 
+		delete gResources;
 		delete gDevice;
 		delete gFileSystem;
 		delete gTime;
@@ -531,62 +513,6 @@ STBIDEF unsigned char *stbi_xload(char const *filename, int *x, int *y, int *fra
 		if (wglSwapIntervalEXT)
 			wglSwapIntervalEXT(_vsync ? 1 : 0);
 		m_vsync = _vsync;
-	}
-	//----------------------------------------------------------------------------//
-	Resource* Engine::GetResource(const char* _type, const String& _name, uint _typeid)
-	{
-		if (!_typeid)
-			_typeid = StringUtils::Hash(_type);
-		uint _id = StringUtils::Hash(_name.c_str());
-		auto& _cache = m_resources[_typeid];
-
-		auto& _exists = _cache.find(_id);
-		if (_exists != _cache.end())
-			return _exists->second;
-
-		Object::TypeInfo* _typeinfo = Object::GetOrCreateTypeInfo(_type);
-		if (!_typeinfo->Factory)
-		{
-			LOG("Error: Unable to create %s \"%s\"", _type, _name.c_str());
-			return nullptr;
-		}
-
-		ResourcePtr _res = _typeinfo->Factory().Cast<Resource>();
-		ASSERT(_res != nullptr);
-
-		_cache[_id] = _res;
-
-		_res->SetName(_name);
-		_res->Load(gFileSystem->OpenFile(_name));
-
-		return _res;
-	}
-	//----------------------------------------------------------------------------//
-	Resource* Engine::GetTempResource(const char* _type, const String& _name, uint _typeid)
-	{
-		if (!_typeid)
-			_typeid = StringUtils::Hash(_type);
-		uint _id = StringUtils::Hash(_name.c_str());
-		auto& _cache = m_resources[_typeid];
-
-		auto& _exists = _cache.find(_id);
-		if (_exists != _cache.end())
-			return _exists->second;
-
-		Object::TypeInfo* _typeinfo = Object::GetOrCreateTypeInfo(_type);
-		if (!_typeinfo->Factory)
-		{
-			LOG("Error: Unable to create %s \"%s\"", _type, _name.c_str());
-			return nullptr;
-		}
-
-		ResourcePtr _res = _typeinfo->Factory().Cast<Resource>();
-		ASSERT(_res != nullptr);
-
-		_res->SetName(_name);
-		_res->Load(gFileSystem->OpenFile(_name));
-
-		return _res;
 	}
 	//----------------------------------------------------------------------------//
 	void Engine::Begin2D(const Vector2& _cameraPos, float _zoom)

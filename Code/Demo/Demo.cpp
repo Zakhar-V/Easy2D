@@ -102,7 +102,7 @@ void main(void)
 		_sprite.pivot = { .5f, .5f };
 		_sprite.size = { 64, 64 };
 		_sprite.tc = { 0, 0, 1, 1 };
-		_sprite.texture = gEngine->GetResource<Texture>("test.json");
+		_sprite.texture = gResources->GetResource<Texture>("test.json");
 
 		while (gDevice->IsOpened())
 		{

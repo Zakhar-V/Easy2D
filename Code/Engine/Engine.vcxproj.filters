@@ -66,6 +66,9 @@
     <ClCompile Include="Math.cpp">
       <Filter>Engine\NEW</Filter>
     </ClCompile>
+    <ClCompile Include="Resource.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ThirdParty\glLoadGen\GL\gl_Load.h">
@@ -106,6 +109,9 @@
     </ClInclude>
     <ClInclude Include="Math.hpp">
       <Filter>Engine\NEW</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.hpp">
+      <Filter>Engine\NEW__</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

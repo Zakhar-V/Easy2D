@@ -30,6 +30,7 @@
     <ClCompile Include="Json.cpp" />
     <ClCompile Include="Math.cpp" />
     <ClCompile Include="Object.cpp" />
+    <ClCompile Include="Resource.cpp" />
     <ClCompile Include="System.cpp" />
     <ClCompile Include="Time.cpp" />
   </ItemGroup>
@@ -45,6 +46,7 @@
     <ClInclude Include="Json.hpp" />
     <ClInclude Include="Math.hpp" />
     <ClInclude Include="Object.hpp" />
+    <ClInclude Include="Resource.hpp" />
     <ClInclude Include="System.hpp" />
     <ClInclude Include="Time.hpp" />
   </ItemGroup>
